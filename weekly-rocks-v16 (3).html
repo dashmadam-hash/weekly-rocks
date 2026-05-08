@@ -1,0 +1,2403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Rocks</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #e2ddd4;
+    --border-hover: #c8c2b6;
+    --text: #1a1916;
+    --text-muted: #7a7569;
+    --text-hint: #b0ab9f;
+    --accent: #3d5a80;
+    --accent-light: #e8eef5;
+    --accent-mid: #5578a0;
+    --danger: #c44b2b;
+    --amber: #b87d1a;
+    --amber-light: #fef3e0;
+    --progress-track: #e2ddd4;
+    --progress-fill: #8bafd4;
+    --think-bg: #edf1f7;
+    --think-text: #3d5a80;
+    --think-border: #b0c4d8;
+    --priority-high: #c44b2b;
+    --priority-high-bg: #fdf0ed;
+    --priority-medium: #7a6020;
+    --priority-medium-bg: #faf5e8;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --sidebar-w: 220px;
+    --sidebar-collapsed-w: 52px;
+    --sidebar-bg: #1a2332;
+    --sidebar-text: #c8d4e0;
+    --sidebar-text-muted: #6a7d91;
+    --sidebar-active-bg: rgba(255,255,255,0.08);
+    --sidebar-active-text: #ffffff;
+    --sidebar-border: rgba(255,255,255,0.07);
+    --sidebar-accent: #5a9fd4;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+    display: flex;
+  }
+
+  /* ── Loading screen ───────────────────────────────────────────────────── */
+  #loading-screen {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 1000; gap: 16px;
+  }
+  #loading-screen.hidden { display: none; }
+  .loading-wordmark { font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+  .loading-dots { display: flex; gap: 6px; }
+  .loading-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0.3; animation: loadbounce 1.2s infinite; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes loadbounce { 0%,60%,100%{opacity:0.3;transform:translateY(0)} 30%{opacity:1;transform:translateY(-4px)} }
+  .loading-status { font-size: 12px; color: var(--text-hint); font-family: 'DM Mono', monospace; }
+
+  /* ── Sync indicator ───────────────────────────────────────────────────── */
+  #sync-indicator {
+    position: fixed; bottom: 16px; right: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 12px; font-size: 11px;
+    font-family: 'DM Mono', monospace; color: var(--text-hint);
+    display: flex; align-items: center; gap: 6px;
+    opacity: 0; transition: opacity 0.3s; z-index: 500;
+    pointer-events: none;
+  }
+  #sync-indicator.visible { opacity: 1; }
+  #sync-indicator .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+  #sync-indicator.saved .sync-dot { background: #4caf50; }
+  #sync-indicator.error .sync-dot { background: var(--danger); }
+
+  /* ── Sidebar ──────────────────────────────────────────────────────────── */
+
+  .sidebar {
+    width: var(--sidebar-w);
+    min-height: 100vh;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    z-index: 50;
+    transition: width 0.2s ease;
+    overflow: hidden;
+  }
+
+  .sidebar.collapsed { width: var(--sidebar-collapsed-w); }
+
+  .sidebar.collapsed .sidebar-wordmark,
+  .sidebar.collapsed .sidebar-week,
+  .sidebar.collapsed .tab-label,
+  .sidebar.collapsed .tab-badge,
+  .sidebar.collapsed .sidebar-footer-btn span:last-child {
+    display: none !important;
+  }
+
+  .sidebar.collapsed .sidebar-brand {
+    padding: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .sidebar.collapsed .sidebar-tab {
+    justify-content: center;
+    padding: 9px 0;
+  }
+
+  .sidebar.collapsed .sidebar-tab .tab-icon { opacity: 0.75; }
+  .sidebar.collapsed .sidebar-tab.active .tab-icon { opacity: 1; }
+
+  .sidebar.collapsed .sidebar-footer { padding: 16px 0; align-items: center; }
+  .sidebar.collapsed .sidebar-footer-btn { justify-content: center; padding: 7px 0; width: 100%; }
+  .sidebar.collapsed .sidebar-footer-btn.new-week-btn { border-left: none; border-right: none; border-radius: 0; }
+
+  .sidebar-collapse-btn {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--sidebar-text-muted); display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 5px; transition: all 0.15s; flex-shrink: 0;
+  }
+  .sidebar-collapse-btn:hover { background: var(--sidebar-active-bg); color: var(--sidebar-text); }
+  .sidebar-collapse-btn svg { transition: transform 0.2s ease; }
+  .sidebar.collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
+
+  .sidebar-brand-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .sidebar.collapsed .sidebar-brand-row { justify-content: center; }
+
+  .main { transition: margin-left 0.2s ease; }
+
+  .sidebar-brand {
+    padding: 28px 20px 20px;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  .sidebar-wordmark {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sidebar-active-text);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+
+  .sidebar-week {
+    font-size: 11px;
+    color: var(--sidebar-text-muted);
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.01em;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sidebar-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+  }
+
+  .sidebar-tab:hover {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
+  }
+
+  .sidebar-tab.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
+  }
+
+  .sidebar-tab .tab-icon {
+    width: 16px; height: 16px;
+    flex-shrink: 0; opacity: 0.7;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sidebar-tab.active .tab-icon { opacity: 1; }
+  .sidebar-tab .tab-label { flex: 1; }
+
+  .sidebar-tab .tab-badge {
+    background: var(--sidebar-accent);
+    color: white; border-radius: 10px;
+    padding: 1px 6px; font-size: 11px; font-weight: 500;
+    min-width: 18px; text-align: center;
+  }
+
+  .sidebar-footer {
+    padding: 16px 10px;
+    border-top: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sidebar-footer-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: 7px; border: none;
+    background: transparent; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; color: var(--sidebar-text-muted);
+    cursor: pointer; transition: all 0.15s;
+    text-align: left; width: 100%;
+  }
+  .sidebar-footer-btn:hover { background: var(--sidebar-active-bg); color: var(--sidebar-text); }
+  .sidebar-footer-btn.new-week-btn {
+    color: var(--sidebar-accent); margin-top: 4px;
+    border: 1px solid rgba(90,159,212,0.25);
+  }
+  .sidebar-footer-btn.new-week-btn:hover { background: rgba(90,159,212,0.1); color: #7bbce8; }
+
+  /* ── Main ─────────────────────────────────────────────────────────────── */
+
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1; min-height: 100vh;
+  }
+
+  .main-inner {
+    max-width: 760px;
+    padding: 36px 32px 80px;
+    width: 100%;
+  }
+
+  .capture-bar { display: flex; gap: 8px; margin-bottom: 28px; }
+  .capture-input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 9px 14px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text);
+    outline: none; transition: border-color 0.15s;
+  }
+  .capture-input::placeholder { color: var(--text-hint); }
+  .capture-input:focus { border-color: var(--accent-mid); }
+
+  .btn-add {
+    background: var(--accent); color: white; border: none; border-radius: var(--radius-sm);
+    padding: 9px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  }
+  .btn-add:hover { background: #2d4460; }
+
+  /* ── Rock cards ───────────────────────────────────────────────────────── */
+
+  .rocks-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .rock-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: visible;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    position: relative;
+  }
+  .rock-card:hover { border-color: var(--border-hover); }
+  .rock-card.dragging { opacity: 0.45; }
+  .rock-card.drag-over {
+    border-color: var(--accent-mid);
+    box-shadow: 0 0 0 2px var(--accent-light);
+  }
+
+  .rock-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; cursor: pointer; user-select: none; position: relative;
+  }
+
+  .rock-drag-handle {
+    width: 16px; height: 18px; color: var(--text-hint); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab; opacity: 0; transition: opacity 0.15s;
+  }
+  .rock-header:hover .rock-drag-handle { opacity: 1; }
+  .rock-drag-handle:active { cursor: grabbing; }
+
+  .rock-toggle { width: 18px; height: 18px; color: var(--text-hint); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .rock-toggle svg { transition: transform 0.2s; }
+  .rock-card.open .rock-toggle svg { transform: rotate(90deg); }
+
+  .rock-meta { flex: 1; min-width: 0; }
+  .rock-area {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.08em; color: var(--text-hint);
+    text-transform: uppercase; margin-bottom: 2px; outline: none; border-radius: 3px;
+    padding: 1px 3px; margin-left: -3px; cursor: text; display: inline-block;
+  }
+  .rock-area:hover { background: rgba(0,0,0,0.05); }
+  .rock-area:focus { background: rgba(0,0,0,0.05); box-shadow: 0 0 0 1.5px var(--accent-mid); }
+  .rock-title {
+    font-size: 15px; font-weight: 500; color: var(--text); letter-spacing: -0.01em;
+    outline: none; border-radius: 3px; padding: 1px 3px; margin-left: -3px; cursor: text; display: block;
+  }
+  .rock-title:hover { background: rgba(0,0,0,0.04); }
+  .rock-title:focus { background: rgba(0,0,0,0.04); box-shadow: 0 0 0 1.5px var(--accent-mid); }
+  .rock-count { font-size: 11px; color: var(--text-hint); margin-top: 1px; }
+
+  .rock-progress { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .progress-bar { width: 80px; height: 3px; background: var(--progress-track); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--progress-fill); border-radius: 2px; transition: width 0.4s ease; }
+  .progress-pct { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-hint); min-width: 26px; text-align: right; }
+
+  /* Rock ··· menu */
+  .rock-menu-wrap { position: relative; flex-shrink: 0; }
+  .btn-rock-menu {
+    background: transparent; border: none; border-radius: var(--radius-sm);
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-hint); font-size: 16px;
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+    letter-spacing: 0.05em; line-height: 1;
+  }
+  .rock-header:hover .btn-rock-menu { opacity: 1; }
+  .btn-rock-menu:hover { background: var(--surface2); color: var(--text-muted); }
+
+  .rock-menu-popover {
+    position: absolute; top: 32px; right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    min-width: 130px; z-index: 20; display: none; overflow: hidden;
+  }
+  .rock-menu-popover.open { display: block; }
+  .rock-menu-item {
+    display: block; width: 100%; padding: 9px 14px;
+    background: transparent; border: none; text-align: left;
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    color: var(--text-muted); cursor: pointer; transition: background 0.1s;
+  }
+  .rock-menu-item:hover { background: var(--surface2); }
+  .rock-menu-item.danger { color: var(--danger); }
+  .rock-menu-item.danger:hover { background: #fdf0ed; }
+
+  .rock-body { display: none; border-top: 1px solid var(--border); overflow: hidden; border-radius: 0 0 var(--radius) var(--radius); }
+  .rock-card.open .rock-body { display: block; }
+
+  .stream-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-hint); padding: 10px 16px 4px; }
+
+  /* Steps */
+  .task-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; transition: background 0.1s; position: relative;
+  }
+  .task-row:hover { background: var(--surface2); }
+  .task-row.sub-task { padding-left: 46px; padding-top: 5px; padding-bottom: 5px; }
+  .task-row.sub-task .task-label { font-size: 13px; color: var(--text-muted); }
+
+  .task-row.priority-high::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--priority-high); border-radius: 0;
+  }
+  .task-row.priority-high { background: var(--priority-high-bg); }
+  .task-row.priority-high:hover { background: #fbe8e3; }
+
+  .task-row.priority-medium::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--priority-medium); border-radius: 0;
+  }
+  .task-row.priority-medium { background: var(--priority-medium-bg); }
+  .task-row.priority-medium:hover { background: #f5edd8; }
+
+  .task-row.step-dragging { opacity: 0.4; }
+  .task-row.step-drag-over { box-shadow: inset 0 -2px 0 var(--accent-mid); }
+
+  .step-drag-handle {
+    width: 12px; height: 18px; color: var(--text-hint); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab; opacity: 0; transition: opacity 0.15s;
+  }
+  .task-row:hover .step-drag-handle { opacity: 1; }
+  .step-drag-handle:active { cursor: grabbing; }
+
+  .task-checkbox {
+    width: 16px; height: 16px; border: 1.5px solid var(--border-hover); border-radius: 4px;
+    flex-shrink: 0; cursor: pointer; background: transparent; position: relative;
+    transition: all 0.15s; appearance: none; -webkit-appearance: none;
+  }
+  .task-checkbox:checked { background: var(--accent); border-color: var(--accent); }
+  .task-checkbox:checked::after {
+    content: ''; position: absolute; left: 3px; top: 1px; width: 8px; height: 5px;
+    border-left: 1.5px solid white; border-bottom: 1.5px solid white; transform: rotate(-45deg);
+  }
+
+  .task-label {
+    flex: 1; font-size: 14px; color: var(--text); transition: color 0.15s;
+    outline: none; border-radius: 3px; padding: 1px 4px; margin: -1px -4px; cursor: text; min-width: 0;
+  }
+  .task-label:hover { background: rgba(0,0,0,0.04); }
+  .task-label:focus { background: rgba(0,0,0,0.04); box-shadow: 0 0 0 1.5px var(--accent-mid); }
+  .task-label.done { text-decoration: line-through; color: var(--text-hint); }
+
+  .task-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .task-sub-count { font-size: 11px; color: var(--text-hint); font-family: 'DM Mono', monospace; }
+
+  .btn-today {
+    background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-hint); transition: all 0.15s; flex-shrink: 0;
+  }
+  .btn-today:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
+  .btn-today.scheduled { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
+
+  .btn-task-toggle {
+    background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-muted); transition: all 0.15s; flex-shrink: 0;
+  }
+  .btn-task-toggle:hover { border-color: var(--border-hover); color: var(--text); background: var(--surface2); }
+  .btn-task-toggle svg { transition: transform 0.2s; }
+  .btn-task-toggle.open svg { transform: rotate(90deg); }
+
+  .priority-select {
+    background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 3px 6px; font-family: 'DM Sans', sans-serif; font-size: 12px;
+    color: var(--text-muted); cursor: pointer; outline: none; height: 28px;
+  }
+  .priority-select:hover { border-color: var(--border-hover); }
+
+  .btn-think {
+    background: var(--think-bg); border: 1px solid var(--think-border); border-radius: var(--radius-sm);
+    padding: 4px 10px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+    color: var(--think-text); cursor: pointer; display: flex; align-items: center;
+    gap: 4px; transition: all 0.15s; white-space: nowrap; height: 28px;
+  }
+  .btn-think:hover { background: #d4e2f0; border-color: #8aaac8; }
+
+  .btn-delete-step {
+    background: transparent; border: none; border-radius: var(--radius-sm);
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-hint); transition: all 0.15s; flex-shrink: 0;
+    opacity: 0;
+  }
+  .task-row:hover .btn-delete-step { opacity: 1; }
+  .btn-delete-step:hover { color: var(--danger); background: #fdf0ed; }
+
+  .btn-delete-task {
+    background: transparent; border: none; border-radius: 3px;
+    width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-hint); transition: all 0.15s; flex-shrink: 0;
+    opacity: 0; margin-left: auto;
+  }
+  .task-row.sub-task:hover .btn-delete-task { opacity: 1; }
+  .btn-delete-task:hover { color: var(--danger); }
+
+  .step-tasks-container { display: none; }
+  .step-tasks-container.open { display: block; }
+
+  .add-task-row { padding: 6px 16px 6px 46px; }
+  .add-task-row input {
+    width: 100%; background: transparent; border: none; border-bottom: 1px dashed var(--border);
+    padding: 4px 0; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-muted); outline: none;
+  }
+  .add-task-row input::placeholder { color: var(--text-hint); }
+  .add-task-row input:focus { border-bottom-color: var(--accent-mid); color: var(--text); }
+
+  .add-step-row { padding: 8px 16px 12px; }
+  .add-step-row input {
+    width: 100%; background: transparent; border: none; border-bottom: 1px dashed var(--border);
+    padding: 5px 0; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-muted); outline: none;
+  }
+  .add-step-row input::placeholder { color: var(--text-hint); }
+  .add-step-row input:focus { border-bottom-color: var(--accent-mid); color: var(--text); }
+
+  /* ── Today view ───────────────────────────────────────────────────────── */
+
+  .today-section { display: flex; flex-direction: column; gap: 6px; }
+  .today-empty { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px 24px; text-align: center; color: var(--text-hint); font-size: 14px; }
+  .today-task { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .today-task:hover { border-color: var(--border-hover); }
+  .today-task-main { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+
+  .today-drag-handle {
+    width: 12px; height: 18px; color: var(--text-hint); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab; opacity: 0; transition: opacity 0.15s;
+  }
+  .today-task:hover .today-drag-handle { opacity: 1; }
+  .today-drag-handle:active { cursor: grabbing; }
+  .today-task.today-dragging { opacity: 0.4; }
+  .today-task.today-drag-over { box-shadow: 0 -2px 0 var(--accent-mid); }
+  .today-task-meta { flex: 1; min-width: 0; }
+  .today-task-source { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-hint); margin-bottom: 2px; }
+  .today-task-label { font-size: 14px; color: var(--text); outline: none; border-radius: 3px; padding: 1px 3px; margin-left: -3px; cursor: text; display: block; }
+  .today-task-label:hover { background: rgba(0,0,0,0.04); }
+  .today-task-label:focus { background: rgba(0,0,0,0.04); box-shadow: 0 0 0 1.5px var(--accent-mid); }
+  .today-task-label.done { text-decoration: line-through; color: var(--text-hint); }
+  .today-step-tasks { display: none; border-top: 1px solid var(--border); padding: 4px 0 8px; }
+  .today-step-tasks.open { display: block; }
+  .today-task-row { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 46px; transition: background 0.1s; }
+  .today-task-row:hover { background: var(--surface2); }
+  .today-task-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+  .btn-remove { background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .btn-remove:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── Inbox ────────────────────────────────────────────────────────────── */
+
+  .inbox-section { display: flex; flex-direction: column; gap: 6px; }
+  .inbox-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .inbox-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .inbox-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .inbox-count { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+  .inbox-items { padding: 4px 0; }
+  .inbox-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; transition: background 0.1s; }
+  .inbox-item:hover { background: var(--surface2); }
+  .inbox-item-text { flex: 1; font-size: 14px; color: var(--text); }
+  .btn-assign { background: var(--accent-light); border: 1px solid #b0c4d8; border-radius: var(--radius-sm); padding: 4px 10px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s; }
+  .btn-assign:hover { background: #d4e2f0; }
+  .inbox-dismiss { background: transparent; border: none; color: var(--text-hint); cursor: pointer; font-size: 16px; padding: 2px 4px; line-height: 1; transition: color 0.15s; }
+  .inbox-dismiss:hover { color: var(--danger); }
+
+  /* ── History ──────────────────────────────────────────────────────────── */
+
+  .history-section { display: flex; flex-direction: column; gap: 10px; }
+  .history-week { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .history-week-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; user-select: none; }
+  .history-week-header:hover { background: var(--surface2); }
+  .history-week-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .history-week-meta { display: flex; gap: 8px; align-items: center; }
+  .history-badge { border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500; }
+  .history-badge.done { background: var(--accent-light); color: var(--accent); }
+  .history-badge.incomplete { background: var(--surface2); color: var(--text-muted); }
+  .history-badge.inbox { background: var(--amber-light); color: var(--amber); }
+  .history-week-body { display: none; border-top: 1px solid var(--border); }
+  .history-week.open .history-week-body { display: block; }
+  .history-section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-hint); padding: 10px 16px 4px; }
+  .history-task { display: flex; align-items: flex-start; gap: 10px; padding: 7px 16px; }
+  .history-check { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+  .history-check.done { background: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .history-check.done::after { content: ''; width: 7px; height: 4px; border-left: 1.5px solid white; border-bottom: 1.5px solid white; transform: rotate(-45deg); margin-top: -1px; display: block; }
+  .history-check.incomplete { border: 1.5px solid var(--border-hover); }
+  .history-task-text { font-size: 13px; color: var(--text); flex: 1; }
+  .history-task-text.incomplete { color: var(--text-muted); }
+  .history-task-source { font-size: 11px; color: var(--text-hint); margin-top: 1px; }
+  .history-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+  .history-inbox-item { display: flex; align-items: center; gap: 10px; padding: 7px 16px; }
+  .history-inbox-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+
+  /* ── Modals ───────────────────────────────────────────────────────────── */
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(20,18,14,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border-radius: 14px; border: 1px solid var(--border);
+    width: 100%; max-width: 560px; max-height: 85vh; display: flex; flex-direction: column;
+    transform: translateY(8px); transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); position: relative; display: flex; justify-content: space-between; align-items: flex-start; }
+  .modal-header-left .modal-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-hint); margin-bottom: 3px; }
+  .modal-header-left .modal-title { font-size: 17px; font-weight: 500; color: var(--text); }
+  .modal-close { background: transparent; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; line-height: 1; padding: 2px; }
+  .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .modal-footer-note { font-size: 12px; color: var(--text-hint); display: flex; align-items: center; gap: 6px; }
+  .modal-footer-note .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+  .modal-footer-actions { display: flex; gap: 8px; }
+
+  .btn-modal-secondary { background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .btn-modal-secondary:hover { border-color: var(--border-hover); color: var(--text); }
+  .btn-modal-primary { background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); padding: 7px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+  .btn-modal-primary:hover { background: #2d4460; }
+  .btn-modal-danger { background: var(--danger); color: white; border: none; border-radius: var(--radius-sm); padding: 7px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+  .btn-modal-danger:hover { background: #a33a22; }
+
+  .confirm-overlay {
+    position: fixed; inset: 0; background: rgba(20,18,14,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 300; padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.15s;
+  }
+  .confirm-overlay.open { opacity: 1; pointer-events: all; }
+  .confirm-dialog {
+    background: var(--surface); border-radius: 12px; border: 1px solid var(--border);
+    width: 100%; max-width: 380px; padding: 24px;
+    transform: scale(0.97); transition: transform 0.15s;
+  }
+  .confirm-overlay.open .confirm-dialog { transform: scale(1); }
+  .confirm-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+  .confirm-body { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; }
+  .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .new-week-paste { width: 100%; height: 220px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); resize: none; outline: none; line-height: 1.7; }
+  .new-week-paste:focus { border-color: var(--accent-mid); }
+  .new-week-paste::placeholder { color: var(--text-hint); }
+
+  .preview-rock { background: var(--surface2); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+  .preview-rock-header { font-size: 10px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-hint); margin-bottom: 4px; }
+  .preview-rock-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .preview-task { font-size: 12px; color: var(--text-muted); padding: 2px 0 2px 10px; border-left: 2px solid var(--border); line-height: 1.7; }
+  .preview-stats { display: flex; gap: 8px; margin-bottom: 14px; }
+  .preview-stat { background: var(--accent-light); border-radius: 6px; padding: 3px 10px; font-size: 12px; color: var(--accent); font-weight: 500; }
+  .preview-stat.neutral { background: var(--surface2); color: var(--text-muted); }
+
+  /* ── New Week 4-stage flow ───────────────────────────────────────────── */
+  .nw-modal { max-width: 620px !important; max-height: 88vh !important; }
+  .nw-stage-pills { display: flex; gap: 5px; align-items: center; }
+  .nw-pill { font-size: 11px; padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border); color: var(--text-hint); white-space: nowrap; }
+  .nw-pill.active { background: var(--accent-light); color: var(--accent); border-color: #b0c4d8; }
+  .nw-pill.done { background: #eaf5ee; color: #2e7d4f; border-color: #a0ccb0; }
+
+  .nw-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.6; }
+  .nw-section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-hint); margin-bottom: 8px; margin-top: 18px; }
+  .nw-section-label:first-child { margin-top: 0; }
+
+  .nw-rock { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
+  .nw-rock-header { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; background: var(--surface2); gap: 10px; }
+  .nw-rock-meta { flex: 1; min-width: 0; }
+  .nw-rock-area { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-hint); margin-bottom: 1px; }
+  .nw-rock-title { font-size: 14px; font-weight: 500; color: var(--text); }
+  .nw-rock-btns { display: flex; gap: 5px; flex-shrink: 0; }
+  .nw-btn { font-size: 12px; padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.12s; font-family: 'DM Sans', sans-serif; }
+  .nw-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .nw-btn.carry-on { background: var(--accent-light); border-color: #b0c4d8; color: var(--accent); }
+  .nw-btn.drop-on { background: #fdf0ed; border-color: #e8b0a0; color: var(--danger); }
+
+  .nw-completed-note { font-size: 11px; color: var(--text-hint); padding: 5px 14px; font-style: italic; border-top: 1px solid var(--border); }
+  .nw-step-row { display: flex; align-items: flex-start; gap: 8px; padding: 7px 14px; border-top: 1px solid var(--border); }
+  .nw-step-row.completed-step { opacity: 0.45; }
+  .nw-step-content { flex: 1; min-width: 0; }
+  .nw-step-text { font-size: 13px; color: var(--text); line-height: 1.45; }
+  .nw-step-text.done { text-decoration: line-through; color: var(--text-hint); }
+  .nw-task-note { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+  .nw-step-actions { display: flex; gap: 4px; flex-shrink: 0; padding-top: 1px; }
+  .nw-step-btn { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s; }
+  .nw-step-btn:hover { border-color: var(--border-hover); }
+  .nw-step-btn.carry-on { background: var(--accent-light); border-color: #b0c4d8; color: var(--accent); }
+  .nw-step-btn.drop-on { background: #fdf0ed; border-color: #e8b0a0; color: var(--danger); }
+
+  .nw-inbox-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; }
+  .nw-inbox-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.45; padding-top: 2px; }
+  .nw-inbox-actions { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; flex-shrink: 0; }
+  .nw-inbox-btn { font-size: 11px; padding: 3px 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s; white-space: nowrap; }
+  .nw-inbox-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .nw-inbox-btn.assigned { background: var(--accent-light); border-color: #b0c4d8; color: var(--accent); }
+  .nw-inbox-btn.kept { background: var(--amber-light); border-color: #d4a44a; color: var(--amber); }
+  .nw-inbox-btn.dismissed { background: #fdf0ed; border-color: #e8b0a0; color: var(--danger); }
+  .nw-assign-select { font-size: 11px; padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; cursor: pointer; outline: none; max-width: 160px; }
+
+  .nw-new-rock-row { display: flex; gap: 6px; margin-top: 8px; }
+  .nw-new-rock-input { flex: 1; border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; color: var(--text); background: transparent; outline: none; font-family: 'DM Sans', sans-serif; }
+  .nw-new-rock-input::placeholder { color: var(--text-hint); }
+  .nw-new-rock-input:focus { border-color: var(--accent-mid); border-style: solid; }
+  .nw-new-rock-add { background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); padding: 7px 12px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+
+  .nw-export-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); line-height: 1.9; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto; }
+  .nw-copy-btn { background: var(--accent-light); border: 1px solid #b0c4d8; border-radius: var(--radius-sm); padding: 7px 14px; font-size: 13px; font-weight: 500; color: var(--accent); cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 10px; transition: background 0.15s; }
+  .nw-copy-btn:hover { background: #d4e2f0; }
+
+  .nw-confirm-stats { display: flex; gap: 10px; margin-bottom: 16px; }
+  .nw-stat { flex: 1; background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 14px; text-align: center; }
+  .nw-stat-n { font-size: 22px; font-weight: 500; color: var(--text); }
+  .nw-stat-l { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+  .nw-confirm-rock { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; gap: 10px; }
+  .nw-confirm-rock-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .nw-confirm-rock-meta { font-size: 11px; color: var(--text-hint); margin-top: 1px; }
+  .nw-confirm-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--accent-light); color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+  .nw-confirm-badge.new { background: #eaf5ee; color: #2e7d4f; }
+  .nw-task-row { padding-left: 32px !important; background: var(--surface2); }
+  .nw-task-item-text { font-size: 12px; color: var(--text-muted); line-height: 1.45; }
+  .nw-warning { margin-top: 14px; padding: 10px 14px; background: var(--surface2); border-radius: var(--radius-sm); font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+  /* ── Think modal ──────────────────────────────────────────────────────── */
+
+  .think-modal-overlay {
+    position: fixed; inset: 0; background: rgba(20,18,14,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .think-modal-overlay.open { opacity: 1; pointer-events: all; }
+  .think-modal { background: var(--surface); border-radius: 14px; border: 1px solid var(--border); width: 100%; max-width: 560px; max-height: 80vh; display: flex; flex-direction: column; transform: translateY(8px); transition: transform 0.2s; }
+  .think-modal-overlay.open .think-modal { transform: translateY(0); }
+  .think-modal-header { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); position: relative; }
+  .think-modal-title { font-size: 13px; font-weight: 500; color: var(--think-text); letter-spacing: 0.01em; margin-bottom: 2px; }
+  .think-modal-rock { font-size: 16px; font-weight: 500; color: var(--text); letter-spacing: -0.01em; }
+  .think-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .think-msg { max-width: 85%; padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.55; }
+  .think-msg.claude { background: var(--surface2); color: var(--text); align-self: flex-start; border-radius: 3px 10px 10px 10px; }
+  .think-msg.user { background: var(--accent); color: white; align-self: flex-end; border-radius: 10px 3px 10px 10px; }
+  .think-loading { display: flex; gap: 4px; align-items: center; padding: 10px 14px; background: var(--surface2); border-radius: 3px 10px 10px 10px; align-self: flex-start; width: 52px; }
+  .think-loading span { width: 6px; height: 6px; background: var(--text-hint); border-radius: 50%; animation: bounce 1.2s infinite; }
+  .think-loading span:nth-child(2) { animation-delay: 0.2s; }
+  .think-loading span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+  .think-input-row { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  .think-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); outline: none; resize: none; height: 38px; overflow: hidden; }
+  .think-input:focus { border-color: var(--accent-mid); }
+  .think-send { background: var(--accent); border: none; border-radius: var(--radius-sm); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: background 0.15s; flex-shrink: 0; }
+  .think-send:hover { background: #2d4460; }
+  .think-close { position: absolute; top: 14px; right: 16px; background: transparent; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; line-height: 1; }
+
+  .section-empty { text-align: center; color: var(--text-hint); font-size: 13px; padding: 32px 0; }
+
+  .add-rock-row {
+    background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius);
+    padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: text; transition: border-color 0.15s;
+  }
+  .add-rock-row:focus-within { border-color: var(--accent-mid); border-style: solid; }
+  .add-rock-row input { flex: 1; background: transparent; border: none; outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); }
+  .add-rock-row input::placeholder { color: var(--text-hint); }
+  .add-rock-row .add-rock-icon { color: var(--text-hint); font-size: 18px; line-height: 1; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading-screen">
+  <div class="loading-wordmark">Weekly Rocks</div>
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+  <div class="loading-status" id="loading-status">Connecting to Google Sheets...</div>
+</div>
+
+<!-- Sync indicator -->
+<div id="sync-indicator">
+  <div class="sync-dot"></div>
+  <span id="sync-label">saving...</span>
+</div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-row">
+      <div>
+        <div class="sidebar-wordmark">Weekly Rocks</div>
+        <div class="sidebar-week" id="sidebar-week-label"></div>
+      </div>
+      <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="Collapse sidebar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="sidebar-tab active" id="tab-today">
+      <span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      <span class="tab-label">Today</span>
+      <span class="tab-badge" id="today-badge" style="display:none">0</span>
+    </button>
+    <button class="sidebar-tab" id="tab-all">
+      <span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+      <span class="tab-label">All Rocks</span>
+    </button>
+    <button class="sidebar-tab" id="tab-inbox">
+      <span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
+      <span class="tab-label">Inbox</span>
+      <span class="tab-badge" id="inbox-badge" style="display:none">0</span>
+    </button>
+    <button class="sidebar-tab" id="tab-history">
+      <span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.57"/></svg></span>
+      <span class="tab-label">History</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="sidebar-footer-btn" id="btn-export">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Export</span>
+    </button>
+    <button class="sidebar-footer-btn" id="btn-import">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Import</span>
+    </button>
+    <button class="sidebar-footer-btn new-week-btn" id="btn-new-week">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>New Week</span>
+    </button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="main-inner">
+    <div class="capture-bar">
+      <input class="capture-input" id="capture-input" placeholder="Capture a thought... (Enter)" />
+      <button class="btn-add" id="btn-add-inbox">+ add</button>
+    </div>
+    <div id="view-today" class="today-section" style="display:none;"></div>
+    <div id="view-all" class="rocks-list" style="display:none;"></div>
+    <div id="view-inbox" class="inbox-section" style="display:none;"></div>
+    <div id="view-history" class="history-section" style="display:none;"></div>
+  </div>
+</main>
+
+<!-- New Week Modal -->
+<div class="modal-overlay" id="new-week-overlay">
+  <div class="modal nw-modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-eyebrow">weekly refresh</div>
+        <div class="modal-title" id="new-week-modal-title">Triage</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="nw-stage-pills" id="nw-pills"></div>
+        <button class="modal-close" id="new-week-close">&#x2715;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="new-week-body"></div>
+    <div class="modal-footer" id="new-week-footer"></div>
+  </div>
+</div>
+
+<!-- Think Modal -->
+<div class="think-modal-overlay" id="think-overlay">
+  <div class="think-modal">
+    <div class="think-modal-header">
+      <div class="think-modal-title">thinking partner</div>
+      <div class="think-modal-rock" id="think-modal-task"></div>
+      <button class="think-close" id="think-close-btn">&#x2715;</button>
+    </div>
+    <div class="think-messages" id="think-messages"></div>
+    <div class="think-input-row">
+      <textarea class="think-input" id="think-input" placeholder="Share what's on your mind..."></textarea>
+      <button class="think-send" id="think-send-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-dialog">
+    <div class="confirm-title" id="confirm-title">Delete rock?</div>
+    <div class="confirm-body" id="confirm-body">This will permanently remove this rock and all its steps.</div>
+    <div class="confirm-actions">
+      <button class="btn-modal-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn-modal-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="import-file-input" accept=".json" style="display:none;">
+
+<script>
+(function() {
+
+  // ── Firestore API ─────────────────────────────────────────────────────────
+
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAYOobXAyFUOS-yRFhlVNnv35AophSO7Vk",
+    authDomain: "weekly-rocks.firebaseapp.com",
+    projectId: "weekly-rocks",
+    storageBucket: "weekly-rocks.firebasestorage.app",
+    messagingSenderId: "95858062737",
+    appId: "1:95858062737:web:3a37b8414764592841d630"
+  };
+
+  var FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/weekly-rocks/databases/(default)/documents/data/main';
+
+  // localStorage key only used for sidebar collapse state (UI preference, not data)
+  var COLLAPSED_KEY = 'weekly_rocks_sidebar_collapsed';
+
+  var saveTimer = null;
+
+  function showSync(state, label) {
+    var ind = document.getElementById('sync-indicator');
+    var lbl = document.getElementById('sync-label');
+    ind.className = 'sync-indicator visible ' + (state || '');
+    lbl.textContent = label || 'saving...';
+    clearTimeout(ind._hideTimer);
+    if (state === 'saved' || state === 'error') {
+      ind._hideTimer = setTimeout(function() { ind.classList.remove('visible'); }, 2000);
+    }
+  }
+
+  async function loadFromFirestore() {
+    var status = document.getElementById('loading-status');
+    try {
+      status.textContent = 'Loading your data...';
+      var resp = await fetch(FIRESTORE_URL + '?key=' + FIREBASE_CONFIG.apiKey);
+      if (resp.status === 404) return { rocks: [], inbox: [], todayTasks: [], history: [] };
+      if (!resp.ok) throw new Error('Load failed: ' + resp.status);
+      var doc = await resp.json();
+      var raw = doc.fields && doc.fields.payload && doc.fields.payload.stringValue;
+      if (!raw) return { rocks: [], inbox: [], todayTasks: [], history: [] };
+      return JSON.parse(raw);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  async function saveToFirestore() {
+    showSync('', 'saving...');
+    var payload = JSON.stringify({ rocks: rocks, inbox: inbox, todayTasks: todayTasks, history: history });
+    var body = { fields: { payload: { stringValue: payload } } };
+    try {
+      var resp = await fetch(FIRESTORE_URL + '?key=' + FIREBASE_CONFIG.apiKey, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!resp.ok) throw new Error('Save failed: ' + resp.status);
+      showSync('saved', 'saved');
+      return true;
+    } catch (err) {
+      showSync('error', 'save failed');
+      return false;
+    }
+  }
+
+  // Debounced save — waits 1.5s after last change before writing to Firestore
+  function saveAll() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveToFirestore, 1500);
+  }
+
+  // ── App state ─────────────────────────────────────────────────────────────
+
+  var rocks, inbox, todayTasks, history, currentTab, thinkContext, thinkHistory;
+  var confirmCallback = null;
+  var nwStage, nwTriageRocks, nwTriageInbox, nwParsedRocks, nwNewRocksFromInbox;
+
+  currentTab   = 'today';
+  thinkContext = null;
+  thinkHistory = [];
+
+  var DEFAULT_ROCKS = [
+    { id:'r1', area:'Enterprise Relationships', title:'Affordable Care', streams:[
+      { label:'ClarityPay', steps:[
+        { id:'t1', text:'Refine 2nd look program and build launch plan', done:false, priority:'', tasks:[{ id:'k1', text:'Reach out to Mike and schedule time', done:false },{ id:'k2', text:'Walk him through the needs', done:false }]},
+        { id:'t2', text:'Analyze ClarityPay Pilot Data', done:false, priority:'', tasks:[] },
+        { id:'t3', text:'Stay on top of ClarityPay launch planning', done:false, priority:'', tasks:[] },
+        { id:'t4', text:'Identify high CP loan borrowers rejected by other lenders', done:false, priority:'', tasks:[] }
+      ]},
+      { label:'CareCredit', steps:[{ id:'t5', text:'Understand why CareCredit program is underperforming', done:false, priority:'', tasks:[] }]}
+    ]},
+    { id:'r2', area:'Enterprise Relationships', title:'Sono Bello', streams:[{ label:'', steps:[{ id:'t6', text:'Schedule quarterly review', done:false, priority:'', tasks:[] },{ id:'t7', text:'Prepare performance deck', done:false, priority:'', tasks:[] }]}]},
+    { id:'r3', area:'Growth', title:'Straumann', streams:[{ label:'', steps:[{ id:'t8', text:'Map out key stakeholders', done:false, priority:'', tasks:[] },{ id:'t9', text:'Draft partnership proposal', done:false, priority:'', tasks:[] },{ id:'t10', text:'Identify pilot locations', done:false, priority:'', tasks:[] }]}]},
+    { id:'r4', area:'Compliance', title:'Broker Agreements', streams:[{ label:'', steps:[{ id:'t13', text:'Finalize template agreement', done:false, priority:'', tasks:[] }]}]},
+    { id:'r5', area:'Lender Engagement', title:'Straumann Pricing', streams:[{ label:'', steps:[{ id:'t14', text:'Align on pricing structure with lenders', done:false, priority:'', tasks:[] }]}]},
+    { id:'r6', area:'Exit Strategy', title:'Acquirer Pipeline', streams:[{ label:'', steps:[{ id:'t15', text:'Update acquirer list and prioritize', done:false, priority:'', tasks:[] },{ id:'t16', text:'Prepare data room index', done:false, priority:'', tasks:[] }]}]},
+    { id:'r7', area:'Personal Health', title:'Diabetes Management', streams:[{ label:'', steps:[{ id:'t19', text:'Schedule appointment with Dr. Chen', done:false, priority:'', tasks:[] }]}]}
+  ];
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+
+  async function boot() {
+    var data = await loadFromFirestore();
+
+    if (data && Array.isArray(data.rocks)) {
+      rocks      = data.rocks      || [];
+      inbox      = data.inbox      || [];
+      todayTasks = data.todayTasks || [];
+      history    = data.history    || [];
+    } else {
+      var status = document.getElementById('loading-status');
+      status.innerHTML = 'Could not connect to database.<br><br><button onclick="location.reload()" style="background:var(--accent);color:white;border:none;border-radius:6px;padding:8px 18px;font-family:DM Sans,sans-serif;font-size:13px;cursor:pointer;">Retry</button>';
+      return;
+    }
+
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('sidebar-week-label').textContent = getWeekLabel();
+    updateBadges();
+    switchTab('today');
+
+    // Sidebar collapse
+    var sidebar = document.getElementById('sidebar');
+    var mainEl  = document.querySelector('.main');
+    var colBtn  = document.getElementById('sidebar-collapse-btn');
+
+    function setSidebarCollapsed(collapsed) {
+      if (collapsed) {
+        sidebar.classList.add('collapsed');
+        mainEl.style.marginLeft = 'var(--sidebar-collapsed-w)';
+        localStorage.setItem(COLLAPSED_KEY, '1');
+      } else {
+        sidebar.classList.remove('collapsed');
+        mainEl.style.marginLeft = 'var(--sidebar-w)';
+        localStorage.setItem(COLLAPSED_KEY, '0');
+      }
+    }
+
+    colBtn.addEventListener('click', function() {
+      setSidebarCollapsed(!sidebar.classList.contains('collapsed'));
+    });
+
+    if (localStorage.getItem(COLLAPSED_KEY) === '1') setSidebarCollapsed(true);
+  }
+
+  // ── Confirm ───────────────────────────────────────────────────────────────
+
+  function showConfirm(title, body, onConfirm) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-body').textContent = body;
+    confirmCallback = onConfirm;
+    document.getElementById('confirm-overlay').classList.add('open');
+  }
+  function closeConfirm() {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    confirmCallback = null;
+  }
+  document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+  document.getElementById('confirm-ok').addEventListener('click', function() { if (confirmCallback) confirmCallback(); closeConfirm(); });
+  document.getElementById('confirm-overlay').addEventListener('click', function(e) { if (e.target === this) closeConfirm(); });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function getWeekLabel() {
+    var now = new Date(), day = now.getDay();
+    var diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    var monday = new Date(now.setDate(diff));
+    return 'Week of ' + monday.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+  }
+
+  function updateBadges() {
+    var tc = todayTasks.filter(function(t) { return !t.done; }).length;
+    var ic = inbox.length;
+    var tb = document.getElementById('today-badge'), ib = document.getElementById('inbox-badge');
+    tb.textContent = tc; tb.style.display = tc > 0 ? 'inline-block' : 'none';
+    ib.textContent = ic; ib.style.display = ic > 0 ? 'inline-block' : 'none';
+  }
+
+  function el(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt !== undefined) e.textContent = txt;
+    return e;
+  }
+
+  function makeEditable(element, getter, setter) {
+    element.contentEditable = 'true';
+    element.spellcheck = false;
+    element.addEventListener('click', function(e) { e.stopPropagation(); });
+    element.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); element.blur(); } });
+    element.addEventListener('blur', function() {
+      var text = element.innerText.trim();
+      if (text) { setter(text); saveAll(); } else { element.innerText = getter(); }
+    });
+  }
+
+  function getOpenState() {
+    var state = { rocks:{}, tasks:{} };
+    rocks.forEach(function(rock) {
+      var card = document.getElementById('rock-' + rock.id);
+      if (card) state.rocks[rock.id] = card.classList.contains('open');
+      rock.streams.forEach(function(stream) {
+        stream.steps.forEach(function(step) {
+          var sc = document.getElementById('tasks-' + step.id);
+          if (sc) state.tasks[step.id] = sc.classList.contains('open');
+        });
+      });
+    });
+    return state;
+  }
+
+  function restoreOpenState(state) {
+    rocks.forEach(function(rock) {
+      var card = document.getElementById('rock-' + rock.id);
+      if (card && state.rocks[rock.id]) card.classList.add('open');
+      rock.streams.forEach(function(stream) {
+        stream.steps.forEach(function(step) {
+          if (state.tasks[step.id]) {
+            var sc = document.getElementById('tasks-' + step.id);
+            if (sc) sc.classList.add('open');
+            var row = document.getElementById('step-row-' + step.id);
+            if (row) { var btn = row.querySelector('.btn-task-toggle'); if (btn) btn.classList.add('open'); }
+          }
+        });
+      });
+    });
+  }
+
+  function findRockStep(stepId) {
+    for (var ri = 0; ri < rocks.length; ri++) {
+      var rock = rocks[ri];
+      for (var si = 0; si < rock.streams.length; si++) {
+        for (var ti = 0; ti < rock.streams[si].steps.length; ti++) {
+          if (rock.streams[si].steps[ti].id === stepId)
+            return { rock: rock, si: si, ti: ti, step: rock.streams[si].steps[ti] };
+        }
+      }
+    }
+    return null;
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+
+  function switchTab(tab) {
+    currentTab = tab;
+    ['today','all','inbox','history'].forEach(function(t) {
+      var view = document.getElementById('view-' + t);
+      var tabEl = document.getElementById('tab-' + t);
+      if (view) { view.style.display = 'none'; view.style.flexDirection = ''; }
+      if (tabEl) tabEl.classList.toggle('active', t === tab);
+    });
+    var v = document.getElementById('view-' + tab);
+    if (tab === 'today' || tab === 'inbox') { v.style.display = 'flex'; v.style.flexDirection = 'column'; }
+    else { v.style.display = 'block'; }
+    if (tab === 'today')   renderToday();
+    if (tab === 'all')     renderAll();
+    if (tab === 'inbox')   renderInbox();
+    if (tab === 'history') renderHistory();
+  }
+
+  // ── Drag: Rocks ───────────────────────────────────────────────────────────
+
+  var dragSrcRockId = null;
+
+  function initRockDrag(card, rock) {
+    var handle = card.querySelector('.rock-drag-handle');
+    handle.addEventListener('mousedown', function() { card.draggable = true; });
+    document.addEventListener('mouseup', function() { card.draggable = false; });
+
+    card.addEventListener('dragstart', function(e) {
+      dragSrcRockId = rock.id;
+      setTimeout(function() { card.classList.add('dragging'); }, 0);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', rock.id);
+    });
+    card.addEventListener('dragend', function() {
+      card.draggable = false;
+      card.classList.remove('dragging');
+      document.querySelectorAll('.rock-card.drag-over').forEach(function(c) { c.classList.remove('drag-over'); });
+      dragSrcRockId = null;
+    });
+    card.addEventListener('dragover', function(e) {
+      if (dragSrcRockId && dragSrcRockId !== rock.id) {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        document.querySelectorAll('.rock-card.drag-over').forEach(function(c) { c.classList.remove('drag-over'); });
+        card.classList.add('drag-over');
+      }
+    });
+    card.addEventListener('dragleave', function(e) {
+      if (!card.contains(e.relatedTarget)) card.classList.remove('drag-over');
+    });
+    card.addEventListener('drop', function(e) {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if (!dragSrcRockId || dragSrcRockId === rock.id) return;
+      var fromIdx = rocks.findIndex(function(r) { return r.id === dragSrcRockId; });
+      var toIdx   = rocks.findIndex(function(r) { return r.id === rock.id; });
+      if (fromIdx < 0 || toIdx < 0) return;
+      var moved = rocks.splice(fromIdx, 1)[0];
+      rocks.splice(toIdx, 0, moved);
+      saveAll();
+      var state = getOpenState(); renderAll(); restoreOpenState(state);
+    });
+  }
+
+  // ── Drag: Steps ───────────────────────────────────────────────────────────
+
+  var dragSrcStep = null;
+
+  function initStepDrag(row, rockId, si, ti, stepId) {
+    var handle = row.querySelector('.step-drag-handle');
+    handle.addEventListener('mousedown', function() { row.draggable = true; });
+    document.addEventListener('mouseup', function() { row.draggable = false; });
+
+    row.addEventListener('dragstart', function(e) {
+      dragSrcStep = { rockId: rockId, si: si, ti: ti, stepId: stepId };
+      setTimeout(function() { row.classList.add('step-dragging'); }, 0);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', stepId);
+    });
+    row.addEventListener('dragend', function() {
+      row.draggable = false;
+      row.classList.remove('step-dragging');
+      document.querySelectorAll('.task-row.step-drag-over').forEach(function(r) { r.classList.remove('step-drag-over'); });
+      dragSrcStep = null;
+    });
+    row.addEventListener('dragover', function(e) {
+      if (dragSrcStep && !(dragSrcStep.rockId === rockId && dragSrcStep.si === si && dragSrcStep.ti === ti)) {
+        e.preventDefault();
+        document.querySelectorAll('.task-row.step-drag-over').forEach(function(r) { r.classList.remove('step-drag-over'); });
+        row.classList.add('step-drag-over');
+      }
+    });
+    row.addEventListener('dragleave', function(e) {
+      if (!row.contains(e.relatedTarget)) row.classList.remove('step-drag-over');
+    });
+    row.addEventListener('drop', function(e) {
+      e.preventDefault();
+      row.classList.remove('step-drag-over');
+      if (!dragSrcStep || (dragSrcStep.rockId === rockId && dragSrcStep.si === si && dragSrcStep.ti === ti)) return;
+      var srcRock = rocks.find(function(r) { return r.id === dragSrcStep.rockId; });
+      var dstRock = rocks.find(function(r) { return r.id === rockId; });
+      if (!srcRock || !dstRock) return;
+      var step = srcRock.streams[dragSrcStep.si].steps.splice(dragSrcStep.ti, 1)[0];
+      var adjustedTi = ti;
+      if (dragSrcStep.rockId === rockId && dragSrcStep.si === si && dragSrcStep.ti < ti) adjustedTi--;
+      dstRock.streams[si].steps.splice(adjustedTi, 0, step);
+      var state = getOpenState(); state.rocks[rockId] = true;
+      saveAll(); renderAll(); restoreOpenState(state);
+    });
+  }
+
+  // ── Render: All Rocks ─────────────────────────────────────────────────────
+
+  function renderAll() {
+    var container = document.getElementById('view-all');
+    container.innerHTML = '';
+
+    rocks.forEach(function(rock) {
+      var total = rock.streams.reduce(function(s,g) { return s + g.steps.length; }, 0);
+      var doneCount = rock.streams.reduce(function(s,g) { return s + g.steps.filter(function(t) { return t.done; }).length; }, 0);
+      var pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+      var card = document.createElement('div');
+      card.className = 'rock-card'; card.id = 'rock-' + rock.id;
+
+      var header = el('div', 'rock-header');
+      header.addEventListener('click', function(e) {
+        if (!e.target.closest('.rock-menu-wrap') && !e.target.closest('.rock-drag-handle')) toggleRock(rock.id);
+      });
+
+      var dragHandle = el('div', 'rock-drag-handle');
+      dragHandle.innerHTML = '<svg width="10" height="14" viewBox="0 0 10 14" fill="none"><circle cx="3" cy="2.5" r="1.2" fill="currentColor"/><circle cx="7" cy="2.5" r="1.2" fill="currentColor"/><circle cx="3" cy="7" r="1.2" fill="currentColor"/><circle cx="7" cy="7" r="1.2" fill="currentColor"/><circle cx="3" cy="11.5" r="1.2" fill="currentColor"/><circle cx="7" cy="11.5" r="1.2" fill="currentColor"/></svg>';
+
+      var toggle = el('div', 'rock-toggle');
+      toggle.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 2l4 3-4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+      var meta = el('div', 'rock-meta');
+      var areaEl = el('div', 'rock-area', rock.area);
+      makeEditable(areaEl, function() { return rocks.find(function(r){return r.id===rock.id;}).area; }, function(v) { rocks.find(function(r){return r.id===rock.id;}).area = v; });
+      var titleEl = el('div', 'rock-title', rock.title);
+      makeEditable(titleEl, function() { return rocks.find(function(r){return r.id===rock.id;}).title; }, function(v) { rocks.find(function(r){return r.id===rock.id;}).title = v; });
+      meta.appendChild(areaEl); meta.appendChild(titleEl);
+      meta.appendChild(el('div', 'rock-count', doneCount + '/' + total + ' done'));
+
+      var progressDiv = el('div', 'rock-progress');
+      progressDiv.innerHTML = '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><div class="progress-pct">' + pct + '%</div>';
+
+      var menuWrap = el('div', 'rock-menu-wrap');
+      var menuBtn = el('button', 'btn-rock-menu', '···');
+      menuBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var popover = menuWrap.querySelector('.rock-menu-popover');
+        var isOpen = popover.classList.contains('open');
+        document.querySelectorAll('.rock-menu-popover.open').forEach(function(p) { p.classList.remove('open'); });
+        if (!isOpen) popover.classList.add('open');
+      });
+      var popover = el('div', 'rock-menu-popover');
+      var deleteItem = el('button', 'rock-menu-item danger', 'Delete rock');
+      deleteItem.addEventListener('click', (function(rid, rtitle) { return function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.rock-menu-popover.open').forEach(function(p) { p.classList.remove('open'); });
+        showConfirm('Delete "' + rtitle + '"?', 'This will permanently remove this rock and all its steps. This cannot be undone.', function() {
+          var stepsToRemove = [];
+          var r = rocks.find(function(x) { return x.id === rid; });
+          if (r) r.streams.forEach(function(s) { s.steps.forEach(function(st) { stepsToRemove.push(st.id); }); });
+          rocks = rocks.filter(function(x) { return x.id !== rid; });
+          todayTasks = todayTasks.filter(function(t) { return stepsToRemove.indexOf(t.taskId) < 0; });
+          saveAll(); updateBadges(); renderAll();
+          if (currentTab === 'today') renderToday();
+        });
+      }; })(rock.id, rock.title));
+      popover.appendChild(deleteItem);
+      menuWrap.appendChild(menuBtn); menuWrap.appendChild(popover);
+
+      header.appendChild(dragHandle); header.appendChild(toggle);
+      header.appendChild(meta); header.appendChild(progressDiv); header.appendChild(menuWrap);
+
+      var body = el('div', 'rock-body');
+
+      rock.streams.forEach(function(stream, si) {
+        if (stream.label) body.appendChild(el('div', 'stream-label', stream.label));
+
+        stream.steps.forEach(function(step, ti) {
+          var isToday = todayTasks.some(function(t) { return t.taskId === step.id; });
+          var isPriorityHigh = step.priority === 'high';
+          var isPriorityMedium = step.priority === 'medium';
+
+          var stepRow = el('div', 'task-row' + (isPriorityHigh ? ' priority-high' : isPriorityMedium ? ' priority-medium' : ''));
+          stepRow.id = 'step-row-' + step.id;
+
+          var stepDragHandle = el('div', 'step-drag-handle');
+          stepDragHandle.innerHTML = '<svg width="8" height="12" viewBox="0 0 8 12" fill="none"><circle cx="2" cy="2" r="1" fill="currentColor"/><circle cx="6" cy="2" r="1" fill="currentColor"/><circle cx="2" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="2" cy="10" r="1" fill="currentColor"/><circle cx="6" cy="10" r="1" fill="currentColor"/></svg>';
+          stepRow.appendChild(stepDragHandle);
+
+          var cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.className = 'task-checkbox'; cb.checked = step.done;
+          cb.addEventListener('change', (function(rid,g,t){ return function(){ toggleStep(rid,g,t); }; })(rock.id,si,ti));
+          stepRow.appendChild(cb);
+
+          var labelEl = el('span', 'task-label' + (step.done ? ' done' : ''), step.text);
+          makeEditable(labelEl,
+            function(){ return rocks.find(function(r){return r.id===rock.id;}).streams[si].steps[ti].text; },
+            function(v){ rocks.find(function(r){return r.id===rock.id;}).streams[si].steps[ti].text = v; }
+          );
+          stepRow.appendChild(labelEl);
+
+          var doneTasks = step.tasks.filter(function(s){return s.done;}).length;
+          if (step.tasks.length > 0) stepRow.appendChild(el('span','task-sub-count', doneTasks+'/'+step.tasks.length));
+
+          var actions = el('div', 'task-actions');
+
+          var starBtn = document.createElement('button');
+          starBtn.className = 'btn-today' + (isToday ? ' scheduled' : '');
+          starBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="'+(isToday?'currentColor':'none')+'" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+          starBtn.addEventListener('click', (function(rid,tid,src,txt,btn){ return function(){ toggleToday(rid,tid,src,txt,btn); }; })(rock.id,step.id,rock.area+' · '+rock.title,step.text,starBtn));
+          actions.appendChild(starBtn);
+
+          var tasksContainer = el('div', 'step-tasks-container');
+          tasksContainer.id = 'tasks-' + step.id;
+
+          var toggleBtn = document.createElement('button');
+          toggleBtn.className = 'btn-task-toggle';
+          toggleBtn.innerHTML = '<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M2 1.5l3 2.5-3 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          toggleBtn.addEventListener('click', (function(sc,tb){ return function(e){ e.stopPropagation(); var open=sc.classList.toggle('open'); tb.classList.toggle('open',open); }; })(tasksContainer,toggleBtn));
+          actions.appendChild(toggleBtn);
+
+          var sel = document.createElement('select');
+          sel.className = 'priority-select';
+          ['priority','high','medium','low'].forEach(function(v,idx){
+            var opt = document.createElement('option');
+            opt.value = idx===0?'':v; opt.textContent = v;
+            if ((step.priority||'') === (idx===0?'':v)) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          sel.addEventListener('change', (function(rid,g,t,s){ return function(){
+            rocks.find(function(r){return r.id===rid;}).streams[g].steps[t].priority = s.value;
+            saveAll();
+            var state = getOpenState(); state.rocks[rid] = true;
+            renderAll(); restoreOpenState(state);
+          }; })(rock.id,si,ti,sel));
+          actions.appendChild(sel);
+
+          var thinkBtn = el('button','btn-think','think ↗');
+          thinkBtn.addEventListener('click', (function(txt,title,area){ return function(){ openThink(txt,title,area); }; })(step.text,rock.title,rock.area));
+          actions.appendChild(thinkBtn);
+
+          var delStepBtn = el('button', 'btn-delete-step');
+          delStepBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+          delStepBtn.title = 'Delete step';
+          delStepBtn.addEventListener('click', (function(rid, g, t, sid) { return function(e) {
+            e.stopPropagation();
+            var r = rocks.find(function(x) { return x.id === rid; });
+            r.streams[g].steps.splice(t, 1);
+            todayTasks = todayTasks.filter(function(x) { return x.taskId !== sid; });
+            var state = getOpenState(); state.rocks[rid] = true;
+            saveAll(); updateBadges(); renderAll(); restoreOpenState(state);
+            if (currentTab === 'today') renderToday();
+          }; })(rock.id, si, ti, step.id));
+          actions.appendChild(delStepBtn);
+
+          stepRow.appendChild(actions);
+          body.appendChild(stepRow);
+
+          step.tasks.forEach(function(task, ki) {
+            var taskRow = el('div','task-row sub-task');
+            var scb = document.createElement('input');
+            scb.type='checkbox'; scb.className='task-checkbox'; scb.checked=task.done;
+            scb.addEventListener('change',(function(rid,g,t,k){return function(){toggleTask(rid,g,t,k);};})(rock.id,si,ti,ki));
+            taskRow.appendChild(scb);
+            var sLabel = el('span','task-label'+(task.done?' done':''),task.text);
+            makeEditable(sLabel,
+              function(){return rocks.find(function(r){return r.id===rock.id;}).streams[si].steps[ti].tasks[ki].text;},
+              function(v){rocks.find(function(r){return r.id===rock.id;}).streams[si].steps[ti].tasks[ki].text=v;}
+            );
+            taskRow.appendChild(sLabel);
+            var delTaskBtn = el('button', 'btn-delete-task');
+            delTaskBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+            delTaskBtn.title = 'Delete task';
+            delTaskBtn.addEventListener('click', (function(rid, g, t, k) { return function(e) {
+              e.stopPropagation();
+              var stepId = rocks.find(function(r){ return r.id === rid; }).streams[g].steps[t].id;
+              rocks.find(function(r){ return r.id === rid; }).streams[g].steps[t].tasks.splice(k, 1);
+              var state = getOpenState(); state.rocks[rid] = true; state.tasks[stepId] = true;
+              saveAll(); renderAll(); restoreOpenState(state);
+            }; })(rock.id, si, ti, ki));
+            taskRow.appendChild(delTaskBtn);
+            tasksContainer.appendChild(taskRow);
+          });
+
+          var addTaskRow = el('div','add-task-row');
+          var addTaskInput = document.createElement('input');
+          addTaskInput.placeholder = '+ add a task...';
+          addTaskInput.addEventListener('keydown',(function(rid,g,t){return function(e){addTask(e,rid,g,t);};})(rock.id,si,ti));
+          addTaskRow.appendChild(addTaskInput);
+          tasksContainer.appendChild(addTaskRow);
+          body.appendChild(tasksContainer);
+
+          initStepDrag(stepRow, rock.id, si, ti, step.id);
+        });
+
+        var addStepRow = el('div','add-step-row');
+        var addStepInput = document.createElement('input');
+        addStepInput.placeholder = '+ add a step...';
+        addStepInput.addEventListener('keydown',(function(rid,g){return function(e){addStep(e,rid,g);};})(rock.id,si));
+        addStepRow.appendChild(addStepInput);
+        body.appendChild(addStepRow);
+      });
+
+      card.appendChild(header); card.appendChild(body);
+      container.appendChild(card);
+      initRockDrag(card, rock);
+    });
+
+    var addRockRow = el('div', 'add-rock-row');
+    addRockRow.appendChild(el('span', 'add-rock-icon', '+'));
+    var addRockInput = document.createElement('input');
+    addRockInput.placeholder = 'Add a rock... (type title and press Enter)';
+    addRockInput.addEventListener('keydown', function(e) { addRock(e); });
+    addRockRow.appendChild(addRockInput);
+    container.appendChild(addRockRow);
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.rock-menu-wrap'))
+        document.querySelectorAll('.rock-menu-popover.open').forEach(function(p) { p.classList.remove('open'); });
+    }, { once: false });
+  }
+
+  // ── Render: Today ─────────────────────────────────────────────────────────
+
+  function getTodayOpenState() {
+    var open = {};
+    todayTasks.forEach(function(t) {
+      var panel = document.getElementById('today-tasks-' + t.taskId);
+      if (panel) open[t.taskId] = panel.classList.contains('open');
+    });
+    return open;
+  }
+
+  function renderToday(preserveOpen) {
+    var container = document.getElementById('view-today');
+    var openState = preserveOpen || {};
+    container.innerHTML = '';
+    if (todayTasks.length === 0) {
+      container.innerHTML = '<div class="today-empty">No steps scheduled for today.<br>Add steps from All Rocks using the star icon.</div>';
+      return;
+    }
+    todayTasks.forEach(function(t) {
+      var found = findRockStep(t.taskId);
+      var tasks = (found && found.step.tasks) ? found.step.tasks : [];
+
+      var card = el('div','today-task');
+      var main = el('div','today-task-main');
+
+      var todayDragHandle = el('div', 'today-drag-handle');
+      todayDragHandle.innerHTML = '<svg width="8" height="12" viewBox="0 0 8 12" fill="none"><circle cx="2" cy="2" r="1" fill="currentColor"/><circle cx="6" cy="2" r="1" fill="currentColor"/><circle cx="2" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="2" cy="10" r="1" fill="currentColor"/><circle cx="6" cy="10" r="1" fill="currentColor"/></svg>';
+      main.appendChild(todayDragHandle);
+
+      (function(dragCard, taskId, handle) {
+        handle.addEventListener('mousedown', function() { dragCard.draggable = true; });
+        document.addEventListener('mouseup', function() { dragCard.draggable = false; });
+        dragCard.addEventListener('dragstart', function(e) {
+          setTimeout(function() { dragCard.classList.add('today-dragging'); }, 0);
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', taskId);
+        });
+        dragCard.addEventListener('dragend', function() {
+          dragCard.draggable = false;
+          dragCard.classList.remove('today-dragging');
+          document.querySelectorAll('.today-task.today-drag-over').forEach(function(c) { c.classList.remove('today-drag-over'); });
+        });
+        dragCard.addEventListener('dragover', function(e) {
+          var activeDrag = document.querySelector('.today-task.today-dragging');
+          if (activeDrag && activeDrag !== dragCard) {
+            e.preventDefault();
+            document.querySelectorAll('.today-task.today-drag-over').forEach(function(c) { c.classList.remove('today-drag-over'); });
+            dragCard.classList.add('today-drag-over');
+          }
+        });
+        dragCard.addEventListener('dragleave', function(e) {
+          if (!dragCard.contains(e.relatedTarget)) dragCard.classList.remove('today-drag-over');
+        });
+        dragCard.addEventListener('drop', function(e) {
+          e.preventDefault();
+          dragCard.classList.remove('today-drag-over');
+          var dragging = document.querySelector('.today-task.today-dragging');
+          if (!dragging || dragging === dragCard) return;
+          var srcId = e.dataTransfer.getData('text/plain');
+          var fromIdx = todayTasks.findIndex(function(x) { return x.taskId === srcId; });
+          var toIdx   = todayTasks.findIndex(function(x) { return x.taskId === taskId; });
+          if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+          var moved = todayTasks.splice(fromIdx, 1)[0];
+          todayTasks.splice(toIdx, 0, moved);
+          saveAll();
+          renderToday(getTodayOpenState());
+        });
+      })(card, t.taskId, todayDragHandle);
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.className = 'task-checkbox'; cb.checked = t.done;
+      cb.addEventListener('change', (function(tid, checkbox){ return function(){ toggleTodayDone(tid, checkbox); }; })(t.taskId, cb));
+      main.appendChild(cb);
+
+      var meta = el('div','today-task-meta');
+      meta.appendChild(el('div','today-task-source', t.source));
+      var labelEl = el('span', 'today-task-label' + (t.done ? ' done' : ''), t.text);
+      if (found) {
+        makeEditable(labelEl,
+          function(){ var f = findRockStep(t.taskId); return f ? f.step.text : t.text; },
+          function(v){ var f = findRockStep(t.taskId); if (f) f.step.text = v; t.text = v; saveAll(); }
+        );
+      }
+      meta.appendChild(labelEl);
+      if (tasks.length > 0) {
+        var doneTasks = tasks.filter(function(s){ return s.done; }).length;
+        meta.appendChild(el('div','rock-count', doneTasks + '/' + tasks.length + ' tasks'));
+      }
+      main.appendChild(meta);
+
+      var actions = el('div','today-task-actions');
+      var tasksPanel = el('div','today-step-tasks');
+      tasksPanel.id = 'today-tasks-' + t.taskId;
+      if (openState[t.taskId]) tasksPanel.classList.add('open');
+
+      if (found) {
+        var toggleBtn = document.createElement('button');
+        toggleBtn.className = 'btn-task-toggle' + (openState[t.taskId] ? ' open' : '');
+        toggleBtn.innerHTML = '<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M2 1.5l3 2.5-3 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        toggleBtn.addEventListener('click', (function(panel, btn){ return function(e){
+          e.stopPropagation(); var open = panel.classList.toggle('open'); btn.classList.toggle('open', open);
+        }; })(tasksPanel, toggleBtn));
+        actions.appendChild(toggleBtn);
+      }
+
+      var thinkBtn = el('button','btn-think','think ↗');
+      thinkBtn.addEventListener('click',(function(txt){ return function(){ openThink(txt,'Today',''); }; })(t.text));
+      actions.appendChild(thinkBtn);
+
+      var removeBtn = el('button','btn-remove','remove');
+      removeBtn.addEventListener('click',(function(tid){ return function(){ removeToday(tid); }; })(t.taskId));
+      actions.appendChild(removeBtn);
+
+      main.appendChild(actions);
+      card.appendChild(main);
+
+      if (found) {
+        tasks.forEach(function(task, ki) {
+          var taskRow = el('div','today-task-row');
+          var scb = document.createElement('input');
+          scb.type = 'checkbox'; scb.className = 'task-checkbox'; scb.checked = task.done;
+          scb.addEventListener('change', (function(rid, si, ti, taskIdx){ return function(){
+            rocks.find(function(r){ return r.id === rid; }).streams[si].steps[ti].tasks[taskIdx].done = scb.checked;
+            saveAll(); renderToday(getTodayOpenState());
+          }; })(found.rock.id, found.si, found.ti, ki));
+          taskRow.appendChild(scb);
+          var sLabel = el('span', 'today-task-label' + (task.done ? ' done' : ''), task.text);
+          makeEditable(sLabel,
+            function(){ var f = findRockStep(t.taskId); return f ? f.step.tasks[ki].text : task.text; },
+            function(v){ var f = findRockStep(t.taskId); if (f && f.step.tasks[ki]) f.step.tasks[ki].text = v; saveAll(); }
+          );
+          taskRow.appendChild(sLabel);
+          tasksPanel.appendChild(taskRow);
+        });
+
+        var addTaskRow = el('div', 'add-task-row');
+        addTaskRow.style.paddingLeft = '46px';
+        var addTaskInput = document.createElement('input');
+        addTaskInput.placeholder = '+ add a task...';
+        addTaskInput.addEventListener('keydown', (function(stepId){ return function(e) {
+          if (e.key !== 'Enter') return;
+          var text = e.target.value.trim(); if (!text) return;
+          var f = findRockStep(stepId); if (!f) return;
+          f.step.tasks.push({ id: 'k' + Date.now(), text: text, done: false });
+          e.target.value = ''; saveAll(); renderToday(getTodayOpenState());
+        }; })(t.taskId));
+        addTaskRow.appendChild(addTaskInput);
+        tasksPanel.appendChild(addTaskRow);
+        card.appendChild(tasksPanel);
+      }
+
+      container.appendChild(card);
+    });
+  }
+
+  // ── Render: Inbox ─────────────────────────────────────────────────────────
+
+  function renderInbox() {
+    var container = document.getElementById('view-inbox');
+    container.innerHTML = '';
+    if (inbox.length === 0) { container.innerHTML = '<div class="section-empty">Inbox is clear</div>'; return; }
+    var card = el('div','inbox-card');
+    var hdr = el('div','inbox-header');
+    hdr.appendChild(el('div','inbox-title','Captured items'));
+    hdr.appendChild(el('div','inbox-count', inbox.length+' item'+(inbox.length!==1?'s':'')));
+    card.appendChild(hdr);
+    var items = el('div','inbox-items');
+    inbox.forEach(function(item) {
+      var row = el('div','inbox-item');
+      row.appendChild(el('div','inbox-item-text',item.text));
+      var assignBtn = el('button','btn-assign','Assign ↗');
+      assignBtn.addEventListener('click',(function(id,txt){return function(){assignInboxItem(id,txt);};})(item.id,item.text));
+      var dismissBtn = document.createElement('button'); dismissBtn.className='inbox-dismiss'; dismissBtn.innerHTML='&times;';
+      dismissBtn.addEventListener('click',(function(id){return function(){dismissInbox(id);};})(item.id));
+      row.appendChild(assignBtn); row.appendChild(dismissBtn);
+      items.appendChild(row);
+    });
+    card.appendChild(items);
+    container.appendChild(card);
+  }
+
+  // ── Render: History ───────────────────────────────────────────────────────
+
+  function renderHistory() {
+    var container = document.getElementById('view-history');
+    container.innerHTML = '';
+    if (history.length === 0) { container.innerHTML = '<div class="section-empty">No history yet. Complete a week to see your log here.</div>'; return; }
+    history.slice().reverse().forEach(function(week, idx) {
+      var allSteps = [];
+      week.rocks.forEach(function(rock) { rock.streams.forEach(function(stream) { stream.steps.forEach(function(step) { allSteps.push({ step:step, rock:rock }); }); }); });
+      var completedSteps = allSteps.filter(function(x){return x.step.done;});
+      var incompleteSteps = allSteps.filter(function(x){return !x.step.done;});
+      var inboxItems = week.inbox || [];
+
+      var weekCard = el('div','history-week'); if (idx === 0) weekCard.classList.add('open');
+      var weekHeader = el('div','history-week-header');
+      weekHeader.addEventListener('click', function(){ weekCard.classList.toggle('open'); });
+      weekHeader.appendChild(el('div','history-week-title', week.weekLabel));
+      var metaEl = el('div','history-week-meta');
+      metaEl.appendChild(el('div','history-badge done', completedSteps.length+' done'));
+      metaEl.appendChild(el('div','history-badge incomplete', incompleteSteps.length+' incomplete'));
+      if (inboxItems.length > 0) metaEl.appendChild(el('div','history-badge inbox', inboxItems.length+' inbox'));
+      weekHeader.appendChild(metaEl);
+      weekCard.appendChild(weekHeader);
+
+      var body = el('div','history-week-body');
+      if (completedSteps.length > 0) {
+        body.appendChild(el('div','history-section-label','Completed'));
+        completedSteps.forEach(function(x) {
+          var row = el('div','history-task'); var check = el('div','history-check done');
+          var textWrap = el('div');
+          textWrap.appendChild(el('div','history-task-text', x.step.text));
+          textWrap.appendChild(el('div','history-task-source', x.rock.area + (x.rock.title ? ' · ' + x.rock.title : '')));
+          row.appendChild(check); row.appendChild(textWrap); body.appendChild(row);
+        });
+      }
+      if (incompleteSteps.length > 0) {
+        var hr = document.createElement('hr'); hr.className = 'history-divider'; body.appendChild(hr);
+        body.appendChild(el('div','history-section-label','Incomplete'));
+        incompleteSteps.forEach(function(x) {
+          var row = el('div','history-task'); var check = el('div','history-check incomplete');
+          var textWrap = el('div');
+          textWrap.appendChild(el('div','history-task-text incomplete', x.step.text));
+          textWrap.appendChild(el('div','history-task-source', x.rock.area + (x.rock.title ? ' · ' + x.rock.title : '')));
+          row.appendChild(check); row.appendChild(textWrap); body.appendChild(row);
+        });
+      }
+      if (inboxItems.length > 0) {
+        var hr2 = document.createElement('hr'); hr2.className = 'history-divider'; body.appendChild(hr2);
+        body.appendChild(el('div','history-section-label','Inbox at close'));
+        inboxItems.forEach(function(item) {
+          var row = el('div','history-inbox-item');
+          row.appendChild(el('div','history-inbox-dot')); row.appendChild(el('div','history-task-text', item.text));
+          body.appendChild(row);
+        });
+      }
+      weekCard.appendChild(body); container.appendChild(weekCard);
+    });
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+
+  function toggleRock(rockId) { document.getElementById('rock-'+rockId).classList.toggle('open'); }
+
+  function toggleStep(rockId,si,ti) {
+    var rock = rocks.find(function(r){return r.id===rockId;});
+    var step = rock.streams[si].steps[ti]; step.done = !step.done;
+    var todayEntry = todayTasks.find(function(t){ return t.taskId === step.id; });
+    if (todayEntry) todayEntry.done = step.done;
+    var state = getOpenState(); state.rocks[rockId] = true;
+    saveAll(); renderAll(); updateBadges(); restoreOpenState(state);
+    if (currentTab === 'today') renderToday();
+  }
+
+  function toggleTask(rockId,si,ti,ki) {
+    rocks.find(function(r){return r.id===rockId;}).streams[si].steps[ti].tasks[ki].done ^= true;
+    var state = getOpenState(); state.rocks[rockId] = true;
+    saveAll(); renderAll(); restoreOpenState(state);
+    if (currentTab === 'today') renderToday();
+  }
+
+  function toggleToday(rockId,stepId,source,text,btn) {
+    var idx = todayTasks.findIndex(function(t){return t.taskId===stepId;});
+    if (idx >= 0) {
+      todayTasks.splice(idx,1); btn.classList.remove('scheduled');
+      btn.querySelector('svg').setAttribute('fill','none');
+    } else {
+      todayTasks.push({taskId:stepId,source:source,text:text,done:false}); btn.classList.add('scheduled');
+      btn.querySelector('svg').setAttribute('fill','currentColor');
+    }
+    saveAll(); updateBadges();
+  }
+
+  function toggleTodayDone(stepId,cb) {
+    var t = todayTasks.find(function(x){return x.taskId===stepId;});
+    if (t) {
+      t.done = cb.checked;
+      var found = findRockStep(stepId); if (found) found.step.done = cb.checked;
+      saveAll(); updateBadges(); renderToday();
+    }
+  }
+
+  function removeToday(stepId) {
+    todayTasks = todayTasks.filter(function(t){return t.taskId!==stepId;});
+    saveAll(); updateBadges(); renderToday();
+  }
+
+  function addStep(event,rockId,si) {
+    if (event.key !== 'Enter') return;
+    var text = event.target.value.trim(); if (!text) return;
+    rocks.find(function(r){return r.id===rockId;}).streams[si].steps.push({id:'t'+Date.now(),text:text,done:false,priority:'',tasks:[]});
+    event.target.value = '';
+    var state = getOpenState(); state.rocks[rockId] = true;
+    saveAll(); renderAll(); restoreOpenState(state);
+  }
+
+  function addTask(event,rockId,si,ti) {
+    if (event.key !== 'Enter') return;
+    var text = event.target.value.trim(); if (!text) return;
+    var rock = rocks.find(function(r){return r.id===rockId;});
+    var stepId = rock.streams[si].steps[ti].id;
+    rock.streams[si].steps[ti].tasks.push({id:'k'+Date.now(),text:text,done:false});
+    event.target.value = '';
+    var state = getOpenState(); state.rocks[rockId] = true; state.tasks[stepId] = true;
+    saveAll(); renderAll(); restoreOpenState(state);
+  }
+
+  function addRock(event) {
+    if (event.key !== 'Enter') return;
+    var text = event.target.value.trim(); if (!text) return;
+    rocks.push({ id: 'r' + Date.now(), area: 'New Area', title: text, streams: [{ label: '', steps: [] }] });
+    event.target.value = ''; saveAll(); renderAll();
+    var newCard = document.getElementById('rock-' + rocks[rocks.length - 1].id);
+    if (newCard) newCard.classList.add('open');
+  }
+
+  function addToInbox() {
+    var input = document.getElementById('capture-input');
+    var text = input.value.trim(); if (!text) return;
+    inbox.push({id:'i'+Date.now(),text:text});
+    input.value = ''; saveAll(); updateBadges();
+    if (currentTab === 'inbox') renderInbox();
+  }
+
+  function dismissInbox(id) {
+    inbox = inbox.filter(function(i){return i.id!==id;});
+    saveAll(); updateBadges(); renderInbox();
+  }
+
+  function assignInboxItem(id,text) {
+    openThink(text,'Inbox item','Which rock does this belong to?');
+    dismissInbox(id);
+  }
+
+  // ── Outline parser ────────────────────────────────────────────────────────
+
+  function parseOutline(text) {
+    var lines = text.split('\n'), result = [], currentArea = null, currentRock = null, currentStep = null;
+    lines.forEach(function(rawLine) {
+      var line = rawLine.replace(/^[\s\*\-\u2022•]+/, '');
+      var indent = rawLine.search(/[^\s\*\-\u2022•]/);
+      if (indent < 0 || !line.trim()) return;
+      var isRock = indent < 4, isStep = indent >= 4 && indent < 8, isTask = indent >= 8;
+      var clean = line.replace(/:$/, '').trim(); if (!clean) return;
+      if (isRock) {
+        currentRock = { id:'r'+Date.now()+Math.random(), area:'General', title:clean, streams:[{ label:'', steps:[] }] };
+        result.push(currentRock);
+        currentStep = null;
+      } else if (isStep) {
+        if (!currentRock) { currentRock = { id:'r'+Date.now()+Math.random(), area:'General', title:'General', streams:[{ label:'', steps:[] }] }; result.push(currentRock); }
+        currentStep = { id:'t'+Date.now()+Math.random(), text:clean, done:false, priority:'', tasks:[] };
+        currentRock.streams[0].steps.push(currentStep);
+      } else if (isTask) {
+        if (currentStep) currentStep.tasks.push({ id:'k'+Date.now()+Math.random(), text:clean, done:false });
+      }
+    });
+    return result;
+  }
+
+  // ── New Week Modal — 4-stage flow ─────────────────────────────────────────
+
+  function openNewWeekModal() {
+    nwStage = 1;
+    // Build triage state from current rocks — incomplete steps only carry by default
+    nwTriageRocks = rocks.map(function(rock) {
+      var incompleteSteps = [];
+      var completedCount = 0;
+      rock.streams.forEach(function(stream) {
+        stream.steps.forEach(function(step) {
+          if (step.done) { completedCount++; }
+          else { incompleteSteps.push({ stepId: step.id, text: step.text, tasks: step.tasks ? JSON.parse(JSON.stringify(step.tasks)) : [], carry: true, priority: step.priority || '' }); }
+        });
+      });
+      return { rockId: rock.id, area: rock.area, title: rock.title, carry: incompleteSteps.length > 0, dropped: false, incompleteSteps: incompleteSteps, completedCount: completedCount };
+    });
+    nwTriageInbox = inbox.map(function(item) {
+      return { id: item.id, text: item.text, action: 'keep', assignedRockId: null, assignedRockTitle: '' };
+    });
+    nwNewRocksFromInbox = [];
+    nwParsedRocks = [];
+    renderNewWeekModal();
+    document.getElementById('new-week-overlay').classList.add('open');
+    if (nwTriageInbox.length > 0) nwGuessInboxAssignments();
+  }
+
+  function closeNewWeekModal() { document.getElementById('new-week-overlay').classList.remove('open'); }
+
+  function nwSetStage(n) { nwStage = n; renderNewWeekModal(); }
+
+  function renderNewWeekModal() {
+    var body = document.getElementById('new-week-body');
+    var footer = document.getElementById('new-week-footer');
+    var titleEl = document.getElementById('new-week-modal-title');
+    body.innerHTML = ''; footer.innerHTML = '';
+
+    var stageNames = ['Triage', 'Export & plan', 'Paste week', 'Confirm'];
+    titleEl.textContent = stageNames[nwStage - 1];
+
+    // Pills
+    var pillsEl = document.getElementById('nw-pills');
+    pillsEl.innerHTML = '';
+    [1,2,3,4].forEach(function(n) {
+      var labels = ['1 · Triage','2 · Export','3 · Paste','4 · Confirm'];
+      var p = el('div', 'nw-pill' + (n === nwStage ? ' active' : n < nwStage ? ' done' : ''), labels[n-1]);
+      pillsEl.appendChild(p);
+    });
+
+    if (nwStage === 1) renderNwTriage(body, footer);
+    else if (nwStage === 2) renderNwExport(body, footer);
+    else if (nwStage === 3) renderNwPaste(body, footer);
+    else if (nwStage === 4) renderNwConfirm(body, footer);
+  }
+
+  // ── Stage 1: Triage ───────────────────────────────────────────────────────
+
+  function renderNwTriage(body, footer) {
+    var desc = el('div','nw-desc','Decide what carries into next week. Completed steps are shown for context but won\'t carry over. Tasks carry with their step by default.');
+    body.appendChild(desc);
+
+    // Rocks
+    var rocksLabel = el('div','nw-section-label','Rocks');
+    body.appendChild(rocksLabel);
+
+    nwTriageRocks.forEach(function(tr, ri) {
+      var rockEl = el('div','nw-rock');
+
+      // Header
+      var hdr = el('div','nw-rock-header');
+      var meta = el('div','nw-rock-meta');
+      meta.appendChild(el('div','nw-rock-area', tr.area));
+      meta.appendChild(el('div','nw-rock-title', tr.title));
+      hdr.appendChild(meta);
+
+      var btns = el('div','nw-rock-btns');
+      var carryBtn = el('button','nw-btn' + (tr.carry && !tr.dropped ? ' carry-on' : ''), tr.carry && !tr.dropped ? 'Carry ✓' : 'Carry');
+      var dropBtn  = el('button','nw-btn' + (tr.dropped ? ' drop-on' : ''), tr.dropped ? 'Drop ✓' : 'Drop');
+
+      carryBtn.addEventListener('click', function() {
+        nwTriageRocks[ri].carry = true; nwTriageRocks[ri].dropped = false;
+        carryBtn.className = 'nw-btn carry-on'; carryBtn.textContent = 'Carry ✓';
+        dropBtn.className = 'nw-btn'; dropBtn.textContent = 'Drop';
+        // re-show steps
+        var stepsEl = rockEl.querySelector('.nw-rock-steps');
+        if (stepsEl) stepsEl.style.display = '';
+      });
+      dropBtn.addEventListener('click', function() {
+        nwTriageRocks[ri].carry = false; nwTriageRocks[ri].dropped = true;
+        dropBtn.className = 'nw-btn drop-on'; dropBtn.textContent = 'Drop ✓';
+        carryBtn.className = 'nw-btn'; carryBtn.textContent = 'Carry';
+        var stepsEl = rockEl.querySelector('.nw-rock-steps');
+        if (stepsEl) stepsEl.style.display = 'none';
+      });
+      btns.appendChild(carryBtn); btns.appendChild(dropBtn);
+      hdr.appendChild(btns);
+      rockEl.appendChild(hdr);
+
+      // Steps
+      var stepsEl = el('div','nw-rock-steps');
+      if (tr.dropped) stepsEl.style.display = 'none';
+
+      if (tr.completedCount > 0) {
+        var note = el('div','nw-completed-note', tr.completedCount + ' completed step' + (tr.completedCount !== 1 ? 's' : '') + ' — archived');
+        stepsEl.appendChild(note);
+      }
+
+      tr.incompleteSteps.forEach(function(step, si) {
+        var row = el('div','nw-step-row');
+        var content = el('div','nw-step-content');
+        content.appendChild(el('div','nw-step-text', step.text));
+        row.appendChild(content);
+
+        var acts = el('div','nw-step-actions');
+        var sc = el('button','nw-step-btn' + (step.carry ? ' carry-on' : ''), 'carry');
+        var sd = el('button','nw-step-btn' + (!step.carry ? ' drop-on' : ''), 'drop');
+        sc.addEventListener('click', function() {
+          nwTriageRocks[ri].incompleteSteps[si].carry = true;
+          sc.className = 'nw-step-btn carry-on'; sd.className = 'nw-step-btn';
+        });
+        sd.addEventListener('click', function() {
+          nwTriageRocks[ri].incompleteSteps[si].carry = false;
+          sd.className = 'nw-step-btn drop-on'; sc.className = 'nw-step-btn';
+        });
+        acts.appendChild(sc); acts.appendChild(sd);
+        row.appendChild(acts);
+        stepsEl.appendChild(row);
+
+        // Show individual tasks under the step
+        var incompleteTasks = step.tasks.filter(function(t){ return !t.done; });
+        incompleteTasks.forEach(function(task, ki) {
+          var taskRow = el('div','nw-step-row nw-task-row');
+          var taskContent = el('div','nw-step-content');
+          taskContent.appendChild(el('div','nw-task-item-text', task.text));
+          taskRow.appendChild(taskContent);
+          var taskActs = el('div','nw-step-actions');
+          var tDrop = el('button','nw-step-btn' + (task.carry === false ? ' drop-on' : ''), task.carry === false ? 'drop \u2713' : 'drop');
+          tDrop.addEventListener('click', (function(ri2, si2, ki2, btn) { return function() {
+            var t = nwTriageRocks[ri2].incompleteSteps[si2].tasks.filter(function(x){ return !x.done; })[ki2];
+            if (t) {
+              t.carry = (t.carry === false) ? undefined : false;
+              btn.className = 'nw-step-btn' + (t.carry === false ? ' drop-on' : '');
+              btn.textContent = t.carry === false ? 'drop \u2713' : 'drop';
+            }
+          }; })(ri, si, ki, tDrop));
+          taskActs.appendChild(tDrop);
+          taskRow.appendChild(taskActs);
+          stepsEl.appendChild(taskRow);
+        });
+      });
+
+      if (tr.incompleteSteps.length === 0 && tr.completedCount === 0) {
+        stepsEl.appendChild(el('div','nw-completed-note','No steps'));
+      }
+
+      rockEl.appendChild(stepsEl);
+      body.appendChild(rockEl);
+    });
+
+    // Inbox
+    if (nwTriageInbox.length > 0) {
+      body.appendChild(el('div','nw-section-label','Inbox'));
+      nwTriageInbox.forEach(function(item, ii) {
+        var row = el('div','nw-inbox-item');
+        row.appendChild(el('div','nw-inbox-text', item.text));
+
+        var acts = el('div','nw-inbox-actions');
+
+        // Assign select + button
+        var assignWrap = el('div','',null);
+        assignWrap.style.cssText = 'display:flex;gap:4px;align-items:center;';
+        var sel = document.createElement('select');
+        sel.className = 'nw-assign-select';
+        var defaultOpt = document.createElement('option');
+        defaultOpt.value = ''; defaultOpt.textContent = 'assign to rock...';
+        sel.appendChild(defaultOpt);
+        // Carried rocks
+        var carriedRocks = nwTriageRocks.filter(function(r){ return !r.dropped; });
+        carriedRocks.forEach(function(r) {
+          var opt = document.createElement('option'); opt.value = r.rockId; opt.textContent = r.title; sel.appendChild(opt);
+        });
+        // New rocks
+        nwNewRocksFromInbox.forEach(function(nr) {
+          var opt = document.createElement('option'); opt.value = nr.id; opt.textContent = nr.title; sel.appendChild(opt);
+        });
+        var newOpt = document.createElement('option'); newOpt.value = '__new__'; newOpt.textContent = '+ new rock...'; sel.appendChild(newOpt);
+
+        // Pre-select AI guess
+        if (item.assignedRockId) {
+          sel.value = item.assignedRockId;
+          nwTriageInbox[ii].action = 'assign';
+        }
+
+        sel.addEventListener('change', function() {
+          if (sel.value === '__new__') {
+            var title = prompt('New rock title:');
+            if (title && title.trim()) {
+              var nr = { id: 'r' + Date.now(), area: 'General', title: title.trim(), streams:[{ label:'', steps:[] }] };
+              nwNewRocksFromInbox.push(nr);
+              var opt2 = document.createElement('option'); opt2.value = nr.id; opt2.textContent = nr.title;
+              sel.insertBefore(opt2, newOpt); sel.value = nr.id;
+              nwTriageInbox[ii].action = 'assign';
+              nwTriageInbox[ii].assignedRockId = nr.id;
+              nwTriageInbox[ii].assignedRockTitle = nr.title;
+              assignBtn.className = 'nw-inbox-btn assigned';
+            } else { sel.value = item.assignedRockId || ''; }
+          } else if (sel.value) {
+            var chosen = carriedRocks.find(function(r){ return r.rockId === sel.value; }) || nwNewRocksFromInbox.find(function(r){ return r.id === sel.value; });
+            nwTriageInbox[ii].action = 'assign';
+            nwTriageInbox[ii].assignedRockId = sel.value;
+            nwTriageInbox[ii].assignedRockTitle = chosen ? chosen.title : '';
+            assignBtn.className = 'nw-inbox-btn assigned';
+          }
+        });
+        assignWrap.appendChild(sel);
+        var assignBtn = el('button','nw-inbox-btn' + (item.action === 'assign' ? ' assigned' : ''), item.action === 'assign' ? '✓ assigned' : 'assign');
+        assignBtn.addEventListener('click', function() {
+          if (sel.value && sel.value !== '__new__') {
+            nwTriageInbox[ii].action = 'assign';
+            assignBtn.className = 'nw-inbox-btn assigned';
+            assignBtn.textContent = '✓ assigned';
+          }
+        });
+        assignWrap.appendChild(assignBtn);
+        acts.appendChild(assignWrap);
+
+        var keepBtn = el('button','nw-inbox-btn' + (item.action === 'keep' ? ' kept' : ''), 'keep');
+        keepBtn.addEventListener('click', function() {
+          nwTriageInbox[ii].action = 'keep';
+          keepBtn.className = 'nw-inbox-btn kept';
+          assignBtn.className = 'nw-inbox-btn'; assignBtn.textContent = 'assign';
+          dismissBtn.className = 'nw-inbox-btn';
+        });
+        var dismissBtn = el('button','nw-inbox-btn' + (item.action === 'dismiss' ? ' dismissed' : ''), 'dismiss');
+        dismissBtn.addEventListener('click', function() {
+          nwTriageInbox[ii].action = 'dismiss';
+          dismissBtn.className = 'nw-inbox-btn dismissed';
+          assignBtn.className = 'nw-inbox-btn'; assignBtn.textContent = 'assign';
+          keepBtn.className = 'nw-inbox-btn';
+        });
+        acts.appendChild(keepBtn); acts.appendChild(dismissBtn);
+        row.appendChild(acts);
+        body.appendChild(row);
+      });
+    }
+
+    // New rock from inbox
+    body.appendChild(el('div','nw-section-label','Add a new rock'));
+    var newRockRow = el('div','nw-new-rock-row');
+    var newRockInput = el('input','nw-new-rock-input');
+    newRockInput.placeholder = '• Rock title...';
+    var newRockAdd = el('button','nw-new-rock-add','Add');
+    newRockAdd.addEventListener('click', function() {
+      var t = newRockInput.value.trim(); if (!t) return;
+      nwNewRocksFromInbox.push({ id:'r'+Date.now(), area:'General', title:t, streams:[{label:'',steps:[]}] });
+      newRockInput.value = '';
+    });
+    newRockInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ newRockAdd.click(); } });
+    newRockRow.appendChild(newRockInput); newRockRow.appendChild(newRockAdd);
+    body.appendChild(newRockRow);
+
+    // Footer
+    var note = el('div','modal-footer-note');
+    var carriedCount = nwTriageRocks.filter(function(r){ return !r.dropped; }).length;
+    note.appendChild(el('span','', carriedCount + ' rock' + (carriedCount !== 1 ? 's' : '') + ' carrying · ' + nwTriageInbox.length + ' inbox item' + (nwTriageInbox.length !== 1 ? 's' : '')));
+    footer.appendChild(note);
+    var acts2 = el('div','modal-footer-actions');
+    var cancelBtn = el('button','btn-modal-secondary','Cancel'); cancelBtn.addEventListener('click', closeNewWeekModal);
+    var nextBtn = el('button','btn-modal-primary','Export outline →'); nextBtn.addEventListener('click', function(){ nwSetStage(2); });
+    acts2.appendChild(cancelBtn); acts2.appendChild(nextBtn);
+    footer.appendChild(acts2);
+  }
+
+  // ── Stage 2: Export ───────────────────────────────────────────────────────
+
+  function nwBuildExportText() {
+    var lines = [];
+    // Carried rocks
+    nwTriageRocks.forEach(function(tr) {
+      if (tr.dropped) return;
+      lines.push('• ' + tr.title);
+      tr.incompleteSteps.forEach(function(step) {
+        if (!step.carry) return;
+        lines.push('  • ' + step.text);
+        step.tasks.filter(function(t){ return !t.done && t.carry !== false; }).forEach(function(task) {
+          lines.push('    • ' + task.text);
+        });
+      });
+      // Assigned inbox items for this rock
+      nwTriageInbox.forEach(function(item) {
+        if (item.action === 'assign' && item.assignedRockId === tr.rockId) {
+          lines.push('  • ' + item.text);
+        }
+      });
+    });
+    // New rocks from inbox
+    nwNewRocksFromInbox.forEach(function(nr) {
+      lines.push('• ' + nr.title);
+      nwTriageInbox.forEach(function(item) {
+        if (item.action === 'assign' && item.assignedRockId === nr.id) {
+          lines.push('  • ' + item.text);
+        }
+      });
+    });
+    return lines.join('\n');
+  }
+
+  function renderNwExport(body, footer) {
+    var desc = el('div','nw-desc','Copy this outline into Google Docs, flesh it out, then come back and paste your completed week.');
+    body.appendChild(desc);
+
+    var exportText = nwBuildExportText();
+    var box = el('div','nw-export-box', exportText);
+    body.appendChild(box);
+
+    var copyBtn = el('button','nw-copy-btn','Copy outline');
+    copyBtn.addEventListener('click', function() {
+      // Build nested HTML list for Google Docs compatibility
+      // Export format: "• Rock", "  • Step", "    • Task"
+      function buildHtmlList(lines) {
+        var html = '<ul>'; var depth = 0;
+        lines.forEach(function(line) {
+          if (!line.trim()) return;
+          // Count leading spaces before the bullet to determine level
+          var leadingSpaces = line.search(/[^\s]/);
+          var level = 0;
+          if (leadingSpaces >= 4) level = 2;
+          else if (leadingSpaces >= 2) level = 1;
+          var text = line.replace(/^[\s•\-\*]+/, '').trim();
+          if (!text) return;
+          if (level > depth) {
+            for (var i = depth; i < level; i++) html += '<ul>';
+          } else if (level < depth) {
+            for (var i = depth; i > level; i--) html += '</ul>';
+          }
+          depth = level;
+          html += '<li>' + text + '</li>';
+        });
+        for (var i = depth; i >= 0; i--) html += '</ul>';
+        return html;
+      }
+      var htmlContent = buildHtmlList(exportText.split('\n').filter(function(l){ return l.trim(); }));
+      try {
+        var blob = new ClipboardItem({
+          'text/html': new Blob([htmlContent], { type: 'text/html' }),
+          'text/plain': new Blob([exportText], { type: 'text/plain' })
+        });
+        navigator.clipboard.write([blob]).then(function() {
+          copyBtn.textContent = 'Copied ✓';
+          setTimeout(function(){ copyBtn.textContent = 'Copy outline'; }, 2000);
+        });
+      } catch(e) {
+        // Fallback to plain text if ClipboardItem not supported
+        navigator.clipboard.writeText(exportText).then(function() {
+          copyBtn.textContent = 'Copied (plain text) ✓';
+          setTimeout(function(){ copyBtn.textContent = 'Copy outline'; }, 2500);
+        });
+      }
+    });
+    body.appendChild(copyBtn);
+    var clipNote = el('div','','Paste with Cmd+V (not Cmd+Shift+V) into Google Docs to preserve bullet hierarchy.');
+    clipNote.style.cssText = 'font-size:11px;color:var(--text-hint);margin-top:7px;line-height:1.5;';
+    body.appendChild(clipNote);
+
+    var acts = el('div','modal-footer-actions');
+    var backBtn = el('button','btn-modal-secondary','← Back'); backBtn.addEventListener('click', function(){ nwSetStage(1); });
+    var nextBtn = el('button','btn-modal-primary','Paste your week →'); nextBtn.addEventListener('click', function(){ nwSetStage(3); });
+    acts.appendChild(backBtn); acts.appendChild(nextBtn);
+    footer.appendChild(acts);
+  }
+
+  // ── Stage 3: Paste ────────────────────────────────────────────────────────
+
+  function renderNwPaste(body, footer) {
+    var desc = el('div','nw-desc','Paste your completed week outline. This will replace all current rocks when you confirm.');
+    body.appendChild(desc);
+
+    var ta = document.createElement('textarea');
+    ta.className = 'new-week-paste'; ta.id = 'nw-paste-area';
+    ta.placeholder = '• Affordable Care\n  • Refine 2nd look program\n    • Reach out to Mike\n  • Four new steps...\n• New Rock\n  • First step...';
+    ta.style.height = '240px';
+    body.appendChild(ta);
+
+    var acts = el('div','modal-footer-actions');
+    var backBtn = el('button','btn-modal-secondary','← Back'); backBtn.addEventListener('click', function(){ nwSetStage(2); });
+    var nextBtn = el('button','btn-modal-primary','Preview →');
+    nextBtn.addEventListener('click', function() {
+      var text = document.getElementById('nw-paste-area').value.trim();
+      if (!text) return;
+      nwParsedRocks = parseOutline(text);
+      if (nwParsedRocks.length === 0) return;
+      nwSetStage(4);
+    });
+    acts.appendChild(backBtn); acts.appendChild(nextBtn);
+    footer.appendChild(acts);
+  }
+
+  // ── Stage 4: Confirm ──────────────────────────────────────────────────────
+
+  function renderNwConfirm(body, footer) {
+    var totalSteps = nwParsedRocks.reduce(function(s,r){ return s + r.streams.reduce(function(ss,g){ return ss+g.steps.length; },0); },0);
+    var totalTasks = nwParsedRocks.reduce(function(s,r){ return s + r.streams.reduce(function(ss,g){ return ss+g.steps.reduce(function(ts,st){ return ts+st.tasks.length; },0); },0); },0);
+
+    var stats = el('div','nw-confirm-stats');
+    [['nw-stat-n','nw-stat-l',nwParsedRocks.length,'rocks'],[null,null,totalSteps,'steps'],[null,null,totalTasks,'tasks']].forEach(function(d,i) {
+      var sc = el('div','nw-stat');
+      sc.appendChild(el('div','nw-stat-n', String(nwParsedRocks.length === 0 && i > 0 ? [totalSteps,totalTasks][i-1] : [nwParsedRocks.length, totalSteps, totalTasks][i])));
+      sc.appendChild(el('div','nw-stat-l', ['rocks','steps','tasks'][i]));
+      stats.appendChild(sc);
+    });
+    body.appendChild(stats);
+
+    body.appendChild(el('div','nw-section-label','Next week'));
+
+    // Build a set of carried rock titles for badge logic
+    var carriedTitles = {};
+    nwTriageRocks.forEach(function(tr){ if (!tr.dropped) carriedTitles[tr.title.toLowerCase()] = true; });
+
+    nwParsedRocks.forEach(function(rock) {
+      var stepCount = rock.streams.reduce(function(s,g){ return s+g.steps.length; },0);
+      var taskCount = rock.streams.reduce(function(s,g){ return s+g.steps.reduce(function(ts,st){ return ts+st.tasks.length; },0); },0);
+      var isNew = !carriedTitles[rock.title.toLowerCase()];
+
+      var row = el('div','nw-confirm-rock');
+      var meta = el('div');
+      meta.appendChild(el('div','nw-confirm-rock-name', rock.title));
+      var metaStr = (rock.area !== 'General' ? rock.area + ' · ' : '') + stepCount + ' step' + (stepCount !== 1 ? 's' : '') + (taskCount > 0 ? ' · ' + taskCount + ' task' + (taskCount !== 1 ? 's' : '') : '');
+      meta.appendChild(el('div','nw-confirm-rock-meta', metaStr));
+      row.appendChild(meta);
+
+      var badge = el('div','nw-confirm-badge' + (isNew ? ' new' : ''), isNew ? 'new rock' : 'carried');
+      row.appendChild(badge);
+      body.appendChild(row);
+    });
+
+    var warn = el('div','nw-warning','Current week will be archived to History. Inbox items marked "keep" will stay in your inbox. This cannot be undone.');
+    body.appendChild(warn);
+
+    var acts = el('div','modal-footer-actions');
+    var backBtn = el('button','btn-modal-secondary','← Back'); backBtn.addEventListener('click', function(){ nwSetStage(3); });
+    var confirmBtn = el('button','btn-modal-primary','Start week'); confirmBtn.addEventListener('click', confirmNewWeek);
+    acts.appendChild(backBtn); acts.appendChild(confirmBtn);
+    footer.appendChild(acts);
+  }
+
+  // ── AI inbox assignment guess ─────────────────────────────────────────────
+
+  async function nwGuessInboxAssignments() {
+    if (nwTriageInbox.length === 0) return;
+    var rockNames = nwTriageRocks.filter(function(r){ return !r.dropped; }).map(function(r){ return r.title; });
+    if (rockNames.length === 0) return;
+    var prompt = 'Given these rocks: ' + rockNames.join(', ') + '\n\nFor each inbox item below, respond with ONLY a JSON array where each element is the best matching rock title (exact match from the list) or null if none fit. Respond with raw JSON only, no markdown.\n\nInbox items:\n' + nwTriageInbox.map(function(item, i){ return (i+1) + '. ' + item.text; }).join('\n');
+    try {
+      var resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages: [{ role: 'user', content: prompt }] })
+      });
+      var data = await resp.json();
+      var text = data.content.map(function(b){ return b.text||''; }).join('').trim();
+      text = text.replace(/```json|```/g,'').trim();
+      var guesses = JSON.parse(text);
+      if (!Array.isArray(guesses)) return;
+      guesses.forEach(function(guess, i) {
+        if (!guess || !nwTriageInbox[i]) return;
+        var match = nwTriageRocks.find(function(r){ return r.title === guess && !r.dropped; });
+        if (match) {
+          nwTriageInbox[i].assignedRockId = match.rockId;
+          nwTriageInbox[i].assignedRockTitle = match.title;
+          nwTriageInbox[i].action = 'assign';
+        }
+      });
+      // Re-render stage 1 if still on it
+      if (nwStage === 1) renderNewWeekModal();
+    } catch(e) { /* silently fail — user assigns manually */ }
+  }
+
+  async function confirmNewWeek() {
+    // Archive current week
+    history.push({ weekLabel: getWeekLabel(), archivedAt: new Date().toISOString(), rocks: JSON.parse(JSON.stringify(rocks)), inbox: JSON.parse(JSON.stringify(inbox)) });
+    // Apply new rocks from paste
+    rocks = nwParsedRocks;
+    todayTasks = [];
+    // Keep only inbox items the user marked "keep"
+    inbox = nwTriageInbox.filter(function(item){ return item.action === 'keep'; }).map(function(item){ return { id: item.id, text: item.text }; });
+    closeNewWeekModal();
+    updateBadges();
+    switchTab('all');
+    var ok = await saveToFirestore();
+    if (!ok) {
+      alert('Your new week could not be saved. Please check your connection and use Export to back up your data before closing this tab.');
+    }
+  }
+
+  // ── Export / Import ───────────────────────────────────────────────────────
+
+  function exportData() {
+    var data = { exportedAt: new Date().toISOString(), weekly_rocks: rocks, weekly_inbox: inbox, weekly_today: todayTasks, weekly_history: history };
+    var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = 'weekly-rocks-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  function migrateImportedRocks(arr) {
+    return arr.map(function(r) {
+      var area = r.area || r.category || '';
+      var streams = r.streams || (r.groups || []).map(function(g) {
+        return { label: g.label || '', steps: (g.tasks || []).map(function(t) {
+          return { id: t.id, text: t.text, done: t.done, priority: t.priority || '', tasks: (t.steps || []).map(function(s) { return { id: s.id, text: s.text, done: s.done }; }) };
+        })};
+      });
+      return { id: r.id, area: area, title: r.title, streams: streams };
+    });
+  }
+
+  function importData(file) {
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        if (data.weekly_rocks)   rocks      = migrateImportedRocks(data.weekly_rocks);
+        if (data.weekly_inbox)   inbox      = data.weekly_inbox;
+        if (data.weekly_today)   todayTasks = data.weekly_today;
+        if (data.weekly_history) history    = (data.weekly_history || []).map(function(w) { return { weekLabel: w.weekLabel, archivedAt: w.archivedAt, inbox: w.inbox||[], rocks: migrateImportedRocks(w.rocks||[]) }; });
+        var ok = await saveToFirestore();
+        updateBadges(); switchTab(currentTab);
+        if (ok) {
+          alert('Data imported and saved successfully.');
+        } else {
+          alert('Data imported but could not be saved to database. Please check your connection — your data is loaded in the app but not yet persisted.');
+        }
+      } catch(err) { alert('Import failed — invalid file.'); }
+    };
+    reader.readAsText(file);
+  }
+
+  // ── Think modal ───────────────────────────────────────────────────────────
+
+  function openThink(stepText,rockTitle,area) {
+    thinkContext = {stepText:stepText,rockTitle:rockTitle,area:area};
+    thinkHistory = [];
+    document.getElementById('think-modal-task').textContent = stepText;
+    document.getElementById('think-messages').innerHTML = '';
+    document.getElementById('think-overlay').classList.add('open');
+    document.getElementById('think-input').value = '';
+    var opener = 'What\'s your current thinking on "' + stepText + '"? I\'m here to help you get clear — not to tell you what to do.';
+    addThinkMessage(opener,'claude');
+    thinkHistory.push({role:'assistant',content:opener});
+  }
+
+  function closeThink() { document.getElementById('think-overlay').classList.remove('open'); }
+
+  function addThinkMessage(text,role) {
+    var messages = document.getElementById('think-messages');
+    var msg = el('div','think-msg '+role, text);
+    messages.appendChild(msg); messages.scrollTop = messages.scrollHeight;
+  }
+
+  function showThinkLoading() {
+    var messages = document.getElementById('think-messages');
+    var loader = el('div','think-loading'); loader.id = 'think-loader';
+    loader.innerHTML = '<span></span><span></span><span></span>';
+    messages.appendChild(loader); messages.scrollTop = messages.scrollHeight;
+  }
+
+  function removeThinkLoading() { var l=document.getElementById('think-loader'); if(l) l.remove(); }
+
+  async function sendThinkMessage() {
+    var input = document.getElementById('think-input');
+    var text = input.value.trim(); if (!text) return;
+    input.value = '';
+    addThinkMessage(text,'user');
+    thinkHistory.push({role:'user',content:text});
+    showThinkLoading();
+    var sys = 'You are a Socratic thinking partner helping someone work through a business challenge. Help them clarify their own thinking, not give advice or solve problems.\n\nThe person is working on: "' + thinkContext.stepText + '"\nRock: ' + thinkContext.rockTitle + ' (Area: ' + thinkContext.area + ')\n\nAsk one thoughtful question at a time. Reflect back what you hear. Never give a to-do list or direct recommendations. Be warm, concise, curious. 2-4 sentences max.';
+    try {
+      var resp = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:sys,messages:thinkHistory}) });
+      var data = await resp.json();
+      removeThinkLoading();
+      var reply = data.content.map(function(b){return b.text||'';}).join('');
+      addThinkMessage(reply,'claude');
+      thinkHistory.push({role:'assistant',content:reply});
+    } catch(err) {
+      removeThinkLoading();
+      addThinkMessage('Something went wrong. Make sure you are using this through claude.ai.','claude');
+    }
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+
+  document.getElementById('tab-today').addEventListener('click',   function(){ switchTab('today'); });
+  document.getElementById('tab-all').addEventListener('click',     function(){ switchTab('all'); });
+  document.getElementById('tab-inbox').addEventListener('click',   function(){ switchTab('inbox'); });
+  document.getElementById('tab-history').addEventListener('click', function(){ switchTab('history'); });
+
+  document.getElementById('btn-add-inbox').addEventListener('click', addToInbox);
+  document.getElementById('capture-input').addEventListener('keydown', function(e){ if(e.key==='Enter') addToInbox(); });
+
+  document.getElementById('btn-new-week').addEventListener('click', openNewWeekModal);
+  document.getElementById('new-week-close').addEventListener('click', closeNewWeekModal);
+  document.getElementById('new-week-overlay').addEventListener('click', function(e){ if(e.target===this) closeNewWeekModal(); });
+
+  document.getElementById('btn-export').addEventListener('click', exportData);
+  document.getElementById('btn-import').addEventListener('click', function(){ document.getElementById('import-file-input').click(); });
+  document.getElementById('import-file-input').addEventListener('change', function(e){ if(e.target.files[0]) importData(e.target.files[0]); });
+
+  document.getElementById('think-close-btn').addEventListener('click', closeThink);
+  document.getElementById('think-send-btn').addEventListener('click', sendThinkMessage);
+  document.getElementById('think-input').addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendThinkMessage();} });
+  document.getElementById('think-overlay').addEventListener('click', function(e){ if(e.target===this) closeThink(); });
+
+  // ── Start ─────────────────────────────────────────────────────────────────
+  boot();
+
+})();
+</script>
+</body>
+</html>
